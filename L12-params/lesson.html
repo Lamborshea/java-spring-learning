@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L12: 请求参数处理 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L12 / 22</span></span>
+  <a href="L13-response/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L12">
+  <h1><span class="course-tag">L12</span> 请求参数处理</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Web 开发</span>
+    <span>🎯 四种参数绑定</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 <code>@PathVariable</code>（路径参数）</li>
+      <li>掌握 <code>@RequestParam</code>（查询参数）</li>
+      <li>掌握 <code>@RequestBody</code>（请求体）</li>
+      <li>掌握 <code>@RequestHeader</code>（请求头）</li>
+    </ul>
+  </div>
+
+  <h2>1. 四种参数</h2>
+  <table>
+    <thead>
+      <tr><th>注解</th><th>位置</th><th>示例</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@PathVariable</code></td><td>URL 路径</td><td><code>/users/{id}</code></td></tr>
+      <tr><td><code>@RequestParam</code></td><td>Query String</td><td><code>/users?name=Tom</code></td></tr>
+      <tr><td><code>@RequestBody</code></td><td>请求体（JSON）</td><td>POST/PUT 的 body</td></tr>
+      <tr><td><code>@RequestHeader</code></td><td>请求头</td><td><code>Authorization: Bearer xxx</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. <code>@PathVariable</code> 路径参数</h2>
+  <pre><code class="language-java">// GET /api/users/123
+@GetMapping("/users/{id}")
+public User getUser(@PathVariable Long id) {
+  return userService.findById(id);
+}
+
+// 多个路径参数
+// GET /api/users/123/orders/456
+@GetMapping("/users/{userId}/orders/{orderId}")
+public Order getOrder(
+    @PathVariable Long userId,
+    @PathVariable Long orderId
+) { ... }</code></pre>
+
+  <h2>3. <code>@RequestParam</code> 查询参数</h2>
+  <pre><code class="language-java">// GET /api/users?page=0&size=10&keyword=Tom
+@GetMapping("/users")
+public List&lt;User&gt; list(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "10") int size,
+    @RequestParam(required = false) String keyword
+) {
+  return userService.search(page, size, keyword);
+}</code></pre>
+
+  <p><strong>注意</strong>：基本类型默认 <code>required = true</code>，要可选必须加 <code>required = false</code> 或用包装类 <code>Integer</code>。</p>
+
+  <h2>4. <code>@RequestBody</code> 请求体</h2>
+  <pre><code class="language-java">// POST /api/users
+// Content-Type: application/json
+// {"name": "Tom", "email": "tom@example.com"}
+@PostMapping("/users")
+public User create(@RequestBody CreateUserRequest req) {
+  return userService.create(req);
+}
+
+public record CreateUserRequest(
+    @NotBlank String name,
+    @Email String email,
+    @Min(0) int age
+) {}</code></pre>
+
+  <div class="callout tip">
+    <div class="callout-title">DTO 设计</div>
+    <p>不要直接用 Entity 接收请求体！<br>
+    Entity 是数据库映射，DTO 是 API 入参，分开能避免：</p>
+    <ul>
+      <li>接口字段泄露数据库结构</li>
+      <li>字段校验和持久化逻辑混淆</li>
+      <li>API 演进时影响数据库</li>
+    </ul>
+  </div>
+
+  <h2>5. <code>@RequestHeader</code> 请求头</h2>
+  <pre><code class="language-java">@PostMapping("/users")
+public User create(
+    @RequestHeader("Authorization") String token,  // 必填
+    @RequestHeader(value = "X-Trace-Id", required = false) String traceId,
+    @RequestBody CreateUserRequest req
+) { ... }</code></pre>
+
+  <h2>6. 综合示例</h2>
+  <pre><code class="language-java">@RestController
+@RequestMapping("/api/users")
+public class UserController {
+
+  @GetMapping
+  public List&lt;User&gt; list(
+      @RequestParam(defaultValue = "0") int page,
+      @RequestParam(defaultValue = "10") int size
+  ) {
+    return userService.findPage(page, size);
+  }
+
+  @GetMapping("/{id}")
+  public User get(@PathVariable Long id) {
+    return userService.findById(id);
+  }
+
+  @PostMapping
+  @ResponseStatus(HttpStatus.CREATED)
+  public User create(@RequestBody @Valid CreateUserRequest req) {
+    return userService.create(req);
+  }
+
+  @PutMapping("/{id}")
+  public User update(
+      @PathVariable Long id,
+      @RequestBody @Valid UpdateUserRequest req
+  ) {
+    return userService.update(id, req);
+  }
+
+  @DeleteMapping("/{id}")
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  public void delete(@PathVariable Long id) {
+    userService.delete(id);
+  }
+}</code></pre>
+
+  <h2>7. JS 对照</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript (Express)</span>
+<pre><code>app.get('/users/:id', (req, res) => {
+  const id = req.params.id;        // 路径参数
+  const keyword = req.query.kw;    // 查询参数
+});
+
+app.post('/users', (req, res) => {
+  const body = req.body;           // 请求体
+  const auth = req.headers.authorization; // 请求头
+});</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java (Spring)</span>
+<pre><code>@GetMapping("/users/{id}")
+public User get(
+  @PathVariable Long id,           // 路径参数
+  @RequestParam String kw           // 查询参数
+) { ... }
+
+@PostMapping("/users")
+public User create(
+  @RequestBody CreateUserRequest body, // 请求体
+  @RequestHeader("Authorization") String auth // 请求头
+) { ... }</code></pre>
+    </div>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 在 <code>spring-boot-webapp</code> 的 <code>HelloController</code> 添加一个接口：<code>GET /api/calc?a=10&amp;b=20</code> 返回 <code>a+b</code>
+    <br><br>
+    <strong>练习 2：</strong> 加一个 <code>GET /api/users/{id}/profile</code>，路径里两个参数的接口
+    <br><br>
+    <strong>练习 3：</strong> 用 Postman 测试，分别用 query、path、body 传参
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>什么场景用 <code>@RequestBody</code>，什么场景用 <code>@RequestParam</code>？</li>
+      <li>为什么不用 Entity 直接接收请求体？举一个反例说明风险</li>
+    </ol>
+  </div>
+
+  <p>掌握参数后，进入 <a href="L13-response/lesson.html">L13 响应统一封装</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L11-rest-api/lesson.html">← L11</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L13-response/lesson.html">L13 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

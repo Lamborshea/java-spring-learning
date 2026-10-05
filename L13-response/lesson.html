@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L13: 响应统一封装 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L13 / 22</span></span>
+  <a href="L14-exception/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L13">
+  <h1><span class="course-tag">L13</span> 响应统一封装</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Web 开发</span>
+    <span>🎯 ApiResponse 设计</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">为什么要统一封装？</div>
+    <p>如果没有统一格式，前端要面对各种"奇形怪状"的响应：</p>
+    <ul>
+      <li>成功时返回 <code>{data: ...}</code></li>
+      <li>失败时返回 <code>{error: "..."}</code></li>
+      <li>异常时直接 500 + HTML</li>
+    </ul>
+    <p>前端每次都要写 <code>if (res.success) ...</code>，<strong>难维护</strong>。</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>设计统一的 <code>ApiResponse&lt;T&gt;</code></li>
+      <li>处理分页响应</li>
+      <li>用 <code>ResponseEntity</code> 控制状态码</li>
+    </ul>
+  </div>
+
+  <h2>1. 设计响应格式</h2>
+  <p>业界通用格式：</p>
+  <pre><code class="language-json">{
+  "code": 200,
+  "message": "success",
+  "data": { ... },
+  "timestamp": "2024-01-01T12:00:00"
+}</code></pre>
+
+  <ul>
+    <li><strong>code</strong>：业务状态码（200 成功、400 参数错、500 服务异常）</li>
+    <li><strong>message</strong>：人类可读消息</li>
+    <li><strong>data</strong>：真正的数据</li>
+    <li><strong>timestamp</strong>：可选，时间戳</li>
+  </ul>
+
+  <h2>2. 实现 ApiResponse</h2>
+  <pre><code class="language-java">@Data
+public class ApiResponse&lt;T&gt; {
+  private int code;
+  private String message;
+  private T data;
+  private long timestamp = System.currentTimeMillis();
+
+  public static &lt;T&gt; ApiResponse&lt;T&gt; success(T data) {
+    ApiResponse&lt;T&gt; r = new ApiResponse&lt;&gt;();
+    r.code = 200;
+    r.message = "success";
+    r.data = data;
+    return r;
+  }
+
+  public static &lt;T&gt; ApiResponse&lt;T&gt; error(int code, String message) {
+    ApiResponse&lt;T&gt; r = new ApiResponse&lt;&gt;();
+    r.code = code;
+    r.message = message;
+    return r;
+  }
+}
+
+// 使用
+@GetMapping("/users/{id}")
+public ApiResponse&lt;User&gt; get(@PathVariable Long id) {
+  User user = userService.findById(id);
+  return ApiResponse.success(user);
+}</code></pre>
+
+  <h2>3. 分页响应</h2>
+  <pre><code class="language-java">@Data
+public class PageResponse&lt;T&gt; {
+  private List&lt;T&gt; content;
+  private int page;
+  private int size;
+  private long total;
+  private int totalPages;
+}
+
+// 返回
+@GetMapping("/users")
+public ApiResponse&lt;PageResponse&lt;User&gt;&gt; list(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "10") int size
+) {
+  Page&lt;User&gt; p = userService.findPage(page, size);
+  PageResponse&lt;User&gt; pr = new PageResponse&lt;&gt;();
+  pr.setContent(p.getContent());
+  pr.setPage(page);
+  pr.setSize(size);
+  pr.setTotal(p.getTotalElements());
+  pr.setTotalPages(p.getTotalPages());
+  return ApiResponse.success(pr);
+}</code></pre>
+
+  <h2>4. ResponseEntity 精细控制</h2>
+  <pre><code class="language-java">// 完整控制：状态码 + 头 + 体
+@PostMapping("/users")
+public ResponseEntity&lt;ApiResponse&lt;User&gt;&gt; create(
+    @RequestBody @Valid CreateUserRequest req
+) {
+  User user = userService.create(req);
+  URI location = URI.create("/api/users/" + user.getId());
+
+  return ResponseEntity
+      .status(HttpStatus.CREATED)        // 201
+      .header("X-User-Id", user.getId().toString())
+      .location(location)                // Location header
+      .body(ApiResponse.success(user));
+}
+
+// 204 No Content
+@DeleteMapping("/users/{id}")
+public ResponseEntity&lt;Void&gt; delete(@PathVariable Long id) {
+  userService.delete(id);
+  return ResponseEntity.noContent().build();  // 204
+}</code></pre>
+
+  <h2>5. 错误码设计</h2>
+  <pre><code class="language-java">public enum ErrorCode {
+  SUCCESS(200, "成功"),
+  PARAM_ERROR(400, "参数错误"),
+  UNAUTHORIZED(401, "未登录"),
+  FORBIDDEN(403, "无权限"),
+  NOT_FOUND(404, "资源不存在"),
+  CONFLICT(409, "冲突"),
+  SERVER_ERROR(500, "服务器异常");
+
+  public final int code;
+  public final String message;
+  ErrorCode(int code, String message) { this.code = code; this.message = message; }
+}
+
+// 使用
+return ApiResponse.error(ErrorCode.NOT_FOUND.code, ErrorCode.NOT_FOUND.message);</code></pre>
+
+  <h2>6. spring-boot-webapp 完整实现</h2>
+  <p>看 <a href="../../spring-boot-webapp/src/main/java/com/learning/webapp/dto/ApiResponse.java">ApiResponse.java</a> 完整代码，包括：</p>
+  <ul>
+    <li>用 Lombok 简化</li>
+    <li>链式 API</li>
+    <li>泛型支持</li>
+  </ul>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>spring-boot-webapp</code>，看几个接口的响应格式
+    <br><br>
+    <strong>练习 2：</strong> 改 <code>ApiResponse</code>，加一个 <code>requestId</code> 字段（用于排查问题）
+    <br><br>
+    <strong>练习 3：</strong> 给 <code>UserController</code> 的 <code>list</code> 接口加分页（参考 L16 JPA 分页）
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>统一响应格式给前端带来什么好处？</li>
+      <li>状态码 200 + 自定义 code 400 vs 直接返回 400 HTTP 状态码，各有什么优劣？</li>
+      <li>前端怎么判断"成功"？是看 HTTP 状态码还是 <code>code</code> 字段？</li>
+    </ol>
+  </div>
+
+  <p>响应统一后，进入 <a href="L14-exception/lesson.html">L14 全局异常处理</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L12-params/lesson.html">← L12</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L14-exception/lesson.html">L14 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

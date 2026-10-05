@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L17: 实体关系映射 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L17 / 22</span></span>
+  <a href="L18-transaction/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L17">
+  <h1><span class="course-tag">L17</span> 实体关系映射</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 数据访问</span>
+    <span>🎯 @OneToMany / @ManyToOne</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 <code>@OneToOne</code> / <code>@OneToMany</code> / <code>@ManyToOne</code> / <code>@ManyToMany</code></li>
+      <li>理解 LAZY / EAGER 加载</li>
+      <li>避免 N+1 查询问题</li>
+    </ul>
+  </div>
+
+  <h2>1. 关系速查</h2>
+  <table>
+    <thead>
+      <tr><th>关系</th><th>示例</th><th>注解</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>一对一</td><td>用户 ↔ 身份证</td><td><code>@OneToOne</code></td></tr>
+      <tr><td>一对多</td><td>用户 → 多篇文章</td><td><code>@OneToMany</code> + <code>@ManyToOne</code></td></tr>
+      <tr><td>多对一</td><td>多篇文章 → 一个作者</td><td><code>@ManyToOne</code></td></tr>
+      <tr><td>多对多</td><td>学生 ↔ 课程</td><td><code>@ManyToMany</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. <code>@ManyToOne</code>（最常用）</h2>
+  <pre><code class="language-java">@Entity
+public class Article {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  private String title;
+  private String content;
+
+  // 多篇文章对应一个作者
+  @ManyToOne(fetch = FetchType.LAZY)  // 推荐 LAZY
+  @JoinColumn(name = "author_id")    // 外键列名
+  private User author;
+}</code></pre>
+
+  <h2>3. <code>@OneToMany</code></h2>
+  <pre><code class="language-java">@Entity
+public class User {
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  private String name;
+
+  // 一个用户有多篇文章
+  @OneToMany(
+    mappedBy = "author",          // 由 Article.author 维护
+    cascade = CascadeType.ALL,    // 级联操作
+    orphanRemoval = true          // 孤儿删除
+  )
+  private List&lt;Article&gt; articles = new ArrayList&lt;&gt;();
+}</code></pre>
+
+  <div class="callout warn">
+    <div class="callout-title">双向关系的"主导方"</div>
+    <p><strong>谁有外键谁是主导方</strong>。在 <code>@OneToMany</code> 中：</p>
+    <ul>
+      <li><code>Article.author</code> 有外键 → 它是主导方</li>
+      <li><code>User.articles</code> 用 <code>mappedBy = "author"</code> 表示"反方"</li>
+      <li>反方不能独立插入（必须通过主导方）</li>
+    </ul>
+  </div>
+
+  <h2>4. <code>@OneToOne</code></h2>
+  <pre><code class="language-java">@Entity
+public class User {
+  @Id
+  private Long id;
+
+  @OneToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "profile_id")
+  private UserProfile profile;
+}
+
+@Entity
+public class UserProfile {
+  @Id
+  private Long id;
+  private String bio;
+}</code></pre>
+
+  <h2>5. <code>@ManyToMany</code></h2>
+  <pre><code class="language-java">@Entity
+public class Student {
+  @Id
+  private Long id;
+  private String name;
+
+  @ManyToMany
+  @JoinTable(
+    name = "student_course",
+    joinColumns = @JoinColumn(name = "student_id"),
+    inverseJoinColumns = @JoinColumn(name = "course_id")
+  )
+  private Set&lt;Course&gt; courses = new HashSet&lt;&gt;();
+}
+
+@Entity
+public class Course {
+  @Id
+  private Long id;
+  private String name;
+
+  @ManyToMany(mappedBy = "courses")
+  private Set&lt;Student&gt; students = new HashSet&lt;&gt;();
+}</code></pre>
+
+  <h2>6. 加载策略</h2>
+  <table>
+    <thead>
+      <tr><th>策略</th><th>说明</th><th>何时用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>LAZY</code>（推荐）</td><td>访问时才查询</td><td><code>@OneToMany</code>、<code>@ManyToMany</code></td></tr>
+      <tr><td><code>EAGER</code></td><td>立即加载</td><td><code>@OneToOne</code>、<code>@ManyToOne</code>（可选）</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. N+1 问题</h2>
+  <p><strong>这是性能最常见的坑</strong>。看代码：</p>
+  <pre><code class="language-java">// ❌ 触发 N+1：1 次查用户 + N 次查文章
+List&lt;User&gt; users = userRepository.findAll();
+for (User u : users) {
+  System.out.println(u.getArticles().size());  // 每条都查一次
+}
+
+// ✅ 解决 1：JOIN FETCH
+@Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.articles")
+List&lt;User&gt; findAllWithArticles();
+
+// ✅ 解决 2：@EntityGraph
+@EntityGraph(attributePaths = "articles")
+List&lt;User&gt; findAll();</code></pre>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 在 <code>L17</code> 看 <code>MappingDemoApplication</code> 中的 User/Article/Department/Employee 例子
+    <br><br>
+    <strong>练习 2：</strong> 给 <code>Article</code> 加一个 <code>tags</code> 字段（多对多）
+    <br><br>
+    <strong>练习 3：</strong> 测试 <code>JOIN FETCH</code> 解决 N+1，看 SQL 日志变化
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么 <code>@OneToMany</code> 推荐 LAZY？EAGER 会出什么问题？</li>
+      <li>N+1 问题在什么场景出现？如何发现？如何避免？</li>
+      <li>多对多关系里，<code>JoinTable</code> 的位置应该在哪一方？</li>
+    </ol>
+  </div>
+
+  <p>关系映射掌握后，进入 <a href="L18-transaction/lesson.html">L18 事务管理</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L16-jpa/lesson.html">← L16</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L18-transaction/lesson.html">L18 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

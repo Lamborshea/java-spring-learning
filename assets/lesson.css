@@ -1,0 +1,300 @@
+/* ============================================================
+   Java Spring Boot 学习课程 - 统一教程样式
+   Design: Tufte 风格 + 现代化阅读体验
+   Author: Lambor
+   ============================================================ */
+
+:root {
+  --bg: #fafaf7;
+  --fg: #1a1a1a;
+  --muted: #666;
+  --accent: #d97706;          /* amber-600, 暖色突出 */
+  --accent-light: #fef3c7;
+  --link: #1e6bb8;
+  --link-hover: #0d4a8a;
+  --border: #e5e5e0;
+  --code-bg: #1e1e1e;
+  --code-fg: #d4d4d4;
+  --callout-bg: #f0f4f8;
+  --warn-bg: #fef2f2;
+  --warn-border: #dc2626;
+  --tip-bg: #f0fdf4;
+  --tip-border: #16a34a;
+  --js-color: #f7df1e;
+  --java-color: #f89820;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 16px; }
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", sans-serif;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 顶部导航条 */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(250, 250, 247, 0.92);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+  padding: 0.6rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+.topbar a { color: var(--muted); text-decoration: none; margin: 0 0.5rem; }
+.topbar a:hover { color: var(--accent); }
+.topbar .course-num { color: var(--accent); font-weight: 600; }
+
+/* 主容器 */
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+/* 标题 */
+h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 1rem 0 0.5rem;
+  line-height: 1.2;
+}
+h1 .course-tag {
+  display: inline-block;
+  background: var(--accent);
+  color: white;
+  padding: 0.2rem 0.7rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--accent);
+}
+h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 1.8rem 0 0.6rem;
+  color: #333;
+}
+p { margin: 0.8rem 0; }
+
+/* 链接 */
+a { color: var(--link); text-decoration: none; }
+a:hover { color: var(--link-hover); text-decoration: underline; }
+
+/* 元信息 */
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.5rem 0 1.5rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.meta span { display: inline-flex; align-items: center; gap: 0.3rem; }
+
+/* 目标卡片 */
+.objective {
+  background: var(--callout-bg);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+  border-radius: 0 4px 4px 0;
+}
+.objective h3 { margin-top: 0; color: var(--accent); }
+
+/* Callouts */
+.callout {
+  padding: 1rem 1.2rem;
+  margin: 1.2rem 0;
+  border-radius: 4px;
+  border-left: 4px solid;
+}
+.callout.tip { background: var(--tip-bg); border-color: var(--tip-border); }
+.callout.warn { background: var(--warn-bg); border-color: var(--warn-border); }
+.callout.info { background: var(--callout-bg); border-color: #3b82f6; }
+.callout-title { font-weight: 600; margin-bottom: 0.3rem; }
+
+/* 类比卡片：JS vs Java */
+.analogy {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin: 1.5rem 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.analogy > div {
+  padding: 1rem 1.2rem;
+}
+.analogy .js-side {
+  background: linear-gradient(135deg, #fffef5 0%, #fffce0 100%);
+  border-right: 1px solid var(--border);
+}
+.analogy .java-side {
+  background: linear-gradient(135deg, #fff8f0 0%, #ffeed5 100%);
+}
+.analogy .lang-tag {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+.analogy .js-side .lang-tag { background: var(--js-color); color: #000; }
+.analogy .java-side .lang-tag { background: var(--java-color); color: #fff; }
+.analogy pre { margin: 0; }
+
+@media (max-width: 640px) {
+  .analogy { grid-template-columns: 1fr; }
+  .analogy .js-side { border-right: none; border-bottom: 1px solid var(--border); }
+}
+
+/* 代码块 */
+pre, code {
+  font-family: "SF Mono", Monaco, Menlo, Consolas, "Courier New", monospace;
+  font-size: 0.88rem;
+}
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 1rem 1.2rem;
+  border-radius: 6px;
+  overflow-x: auto;
+  line-height: 1.55;
+  margin: 1rem 0;
+}
+pre code { background: none; padding: 0; color: inherit; }
+
+p code, li code, td code {
+  background: #f4f0e8;
+  color: #b45309;
+  padding: 0.1rem 0.35rem;
+  border-radius: 3px;
+  font-size: 0.85em;
+  border: 1px solid #ead9b8;
+}
+
+/* 表格 */
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1.2rem 0;
+  font-size: 0.92rem;
+}
+th, td {
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  background: #f5f0e6;
+  font-weight: 600;
+  color: #5a3a1a;
+}
+tbody tr:hover { background: #faf8f0; }
+
+/* 列表 */
+ul, ol { padding-left: 1.5rem; }
+li { margin: 0.3rem 0; }
+
+/* 分隔 */
+hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+/* 底部导航 */
+.nav-bottom {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.nav-bottom a { display: inline-block; padding: 0.5rem 1rem; border: 1px solid var(--border); border-radius: 4px; }
+.nav-bottom a:hover { background: var(--accent-light); text-decoration: none; }
+
+/* 练习块 */
+.exercise {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border: 1px solid #7dd3fc;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+}
+.exercise::before {
+  content: "✏️ 动手练习";
+  display: block;
+  font-weight: 700;
+  color: #0369a1;
+  margin-bottom: 0.5rem;
+}
+
+/* 思考题 */
+.thinking {
+  background: linear-gradient(135deg, #fefce8 0%, #fef9c3 100%);
+  border: 1px solid #facc15;
+  border-radius: 6px;
+  padding: 1rem 1.2rem;
+  margin: 1.5rem 0;
+}
+.thinking::before {
+  content: "🤔 思考题";
+  display: block;
+  font-weight: 700;
+  color: #a16207;
+  margin-bottom: 0.5rem;
+}
+
+/* 代码标签 */
+.code-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: -0.5rem;
+  padding-left: 0.5rem;
+}
+.code-tab {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.2rem 0.7rem;
+  background: #2d2d2d;
+  color: #d4d4d4;
+  border-radius: 4px 4px 0 0;
+}
+
+/* 引用 */
+blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* 打印优化 */
+@media print {
+  .topbar, .nav-bottom { display: none; }
+  body { background: white; }
+  pre { background: #f5f5f5 !important; color: #000 !important; border: 1px solid #ccc; }
+}

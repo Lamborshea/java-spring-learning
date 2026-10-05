@@ -1,0 +1,55 @@
+# Spring Boot 配置文件
+# 类似于 JS 项目中的 .env 文件，但更强大
+
+# 服务器配置
+server:
+  port: 8080  # 端口号，类似于 Node.js 的 PORT=8080
+
+# Spring 配置
+spring:
+  application:
+    name: spring-boot-webapp  # 应用名称
+
+  # H2 数据库配置（内存数据库）
+  datasource:
+    url: jdbc:h2:mem:webapp_db  # JDBC URL，mem 表示内存数据库
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:  # H2 默认无密码
+
+  # H2 控制台（开发时可在浏览器访问）
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  # JPA 配置
+  jpa:
+    hibernate:
+      ddl-auto: update  # 启动时自动创建/更新表结构（开发用）
+    show-sql: true      # 显示 SQL 语句（开发用）
+    properties:
+      hibernate:
+        format_sql: true  # 格式化 SQL 输出
+    open-in-view: false  # 建议关闭，防止懒加载问题
+
+  # Thymeleaf 配置
+  thymeleaf:
+    cache: false  # 开发时关闭缓存，修改模板立即生效
+
+# 日志配置
+logging:
+  level:
+    # 包级别日志
+    com.learning.webapp: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    # 格式化日志输出
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 注释说明：
+# - ddl-auto: update 会在每次启动时自动更新数据库结构
+#   生产环境应该用: validate 或 migrations 工具
+# - H2 内存数据库的数据在应用关闭后会丢失
+# - 实际项目通常使用 MySQL/PostgreSQL

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L09: 日志实战 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L09 / 22</span></span>
+  <a href="L10-testing/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L09">
+  <h1><span class="course-tag">L09</span> 日志实战</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Spring Boot 核心</span>
+    <span>🎯 SLF4J + Logback</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 SLF4J 日志 API</li>
+      <li>配置日志级别和格式</li>
+      <li>理解日志占位符 <code>{}</code></li>
+      <li>日志输出到文件</li>
+    </ul>
+  </div>
+
+  <h2>1. 五个日志级别</h2>
+  <table>
+    <thead>
+      <tr><th>级别</th><th>用途</th><th>是否输出</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>TRACE</code></td><td>最详细，框架级</td><td>仅调试时</td></tr>
+      <tr><td><code>DEBUG</code></td><td>调试信息</td><td>开发环境</td></tr>
+      <tr><td><code>INFO</code></td><td>一般信息（推荐）</td><td>生产默认</td></tr>
+      <tr><td><code>WARN</code></td><td>警告</td><td>需要注意</td></tr>
+      <tr><td><code>ERROR</code></td><td>错误</td><td>必须处理</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. 使用 SLF4J 记录日志</h2>
+  <pre><code class="language-java">import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+@Service
+public class UserService {
+  private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
+  public void createUser(String name) {
+    log.info("创建用户: {}", name);
+    log.debug("详细信息: name={}, time={}", name, LocalDateTime.now());
+    log.warn("警告：用户名为空");
+    log.error("错误：保存失败", new RuntimeException("DB error"));
+  }
+}</code></pre>
+
+  <h2>3. 占位符 vs 字符串拼接</h2>
+  <p><strong>这是性能关键点</strong>。看代码：</p>
+
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">反例（不要这样）</span>
+<pre><code>// 即使不输出，拼接也会执行
+log.debug("用户信息: " + user);</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">正例（推荐）</span>
+<pre><code>// 占位符 {}，未启用级别不执行
+log.debug("用户信息: {}", user);</code></pre>
+    </div>
+  </div>
+
+  <p>在生产环境，<code>DEBUG</code> 通常关闭。<code>"a" + b + c</code> 仍然会执行字符串拼接（消耗 CPU），而 <code>"{}"</code> 不会。</p>
+
+  <h2>4. 配置日志（application.yml）</h2>
+  <pre><code class="language-yaml">logging:
+  level:
+    root: INFO                        # 全局默认级别
+    com.learning: DEBUG               # 自己的包用 DEBUG
+    org.springframework.web: INFO     # Spring 框架保持 INFO
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+
+  file:
+    name: logs/app.log                # 输出到文件
+    max-size: 10MB                    # 单文件大小
+    max-history: 30                   # 保留 30 天</code></pre>
+
+  <h2>5. Lombok 简化（推荐）</h2>
+  <pre><code class="language-java">@Service
+@Slf4j  // 自动生成：private static final Logger log = LoggerFactory.getLogger(...);
+public class UserService {
+  public void createUser(String name) {
+    log.info("创建用户: {}", name);
+  }
+}</code></pre>
+
+  <div class="callout tip">
+    <div class="callout-title">生产建议</div>
+    <ul>
+      <li>用 <code>log.info</code> 记录关键业务节点（订单创建、用户登录）</li>
+      <li>用 <code>log.error</code> + 完整异常堆栈</li>
+      <li>不要用 <code>System.out.println</code>（生产环境无法关闭）</li>
+    </ul>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L09</code>，观察不同级别的输出
+    <br><br>
+    <strong>练习 2：</strong> 修改 <code>application.yml</code> 把级别调到 <code>DEBUG</code>，看输出变多
+    <br><br>
+    <strong>练习 3：</strong> 在某处加 <code>log.error("出错了", new RuntimeException("测试"))</code>，看完整堆栈
+    <br><br>
+    <strong>练习 4：</strong> 故意写 <code>log.debug("x=" + x + "y=" + y)</code>，看是否每次都执行
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么生产环境推荐 <code>{}</code> 占位符而不是 <code>+</code> 拼接？</li>
+      <li>你的项目日志应该记录什么？不该记录什么？</li>
+    </ol>
+  </div>
+
+  <p>日志掌握后，进入 <a href="L10-testing/lesson.html">L10 单元测试</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L08-config/lesson.html">← L08</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L10-testing/lesson.html">L10 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

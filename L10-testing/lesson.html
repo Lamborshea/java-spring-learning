@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L10: 单元测试 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L10 / 22</span></span>
+  <a href="L11-rest-api/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L10">
+  <h1><span class="course-tag">L10</span> 单元测试</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 Spring Boot 核心</span>
+    <span>🎯 JUnit 5 + Mockito</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 JUnit 5 注解</li>
+      <li>会用 Mockito 模拟对象</li>
+      <li>会用 <code>@SpringBootTest</code> 集成测试</li>
+    </ul>
+  </div>
+
+  <h2>1. JUnit 5 注解</h2>
+  <table>
+    <thead>
+      <tr><th>注解</th><th>作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@Test</code></td><td>标记测试方法</td></tr>
+      <tr><td><code>@BeforeEach</code></td><td>每个测试方法前执行</td></tr>
+      <tr><td><code>@AfterEach</code></td><td>每个测试方法后执行</td></tr>
+      <tr><td><code>@BeforeAll</code></td><td>所有测试前执行（static）</td></tr>
+      <tr><td><code>@Disabled</code></td><td>禁用测试</td></tr>
+      <tr><td><code>@DisplayName</code></td><td>自定义测试名</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. 基础测试</h2>
+  <pre><code class="language-java">import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
+
+class UserServiceTest {
+
+  @Test
+  @DisplayName("创建用户应该成功")
+  void testCreateUser() {
+    UserService service = new UserService();
+    User user = service.createUser("Lambor", "lambor@example.com");
+    assertNotNull(user);
+    assertEquals("Lambor", user.getName());
+  }
+
+  @Test
+  void testException() {
+    assertThrows(IllegalArgumentException.class, () -> {
+      // 应该抛异常的代码
+    });
+  }
+}</code></pre>
+
+  <h2>3. 常用断言</h2>
+  <pre><code class="language-java">assertEquals(expected, actual);
+assertNotEquals(unexpected, actual);
+assertTrue(condition);
+assertFalse(condition);
+assertNull(object);
+assertNotNull(object);
+assertSame(expected, actual);   // ==
+assertNotSame(unexpected, actual);
+assertThrows(Exception.class, () -> {});
+assertAll("group", () -> assertEquals(...), () -> assertTrue(...));</code></pre>
+
+  <h2>4. Mockito 模拟</h2>
+  <p>为什么要 mock？单元测试只测当前类，不应该连数据库、HTTP。</p>
+  <pre><code class="language-java">import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceTest {
+
+  @Mock  // 创建一个假的 UserRepository
+  private UserRepository userRepository;
+
+  @InjectMocks  // 自动把 mock 注入到 UserService
+  private UserService userService;
+
+  @Test
+  void testGetUser() {
+    // 设定假行为
+    when(userRepository.findById(1L))
+        .thenReturn(Optional.of(new User("Lambor")));
+
+    // 调用真实方法
+    User user = userService.getUser(1L);
+
+    // 断言
+    assertEquals("Lambor", user.getName());
+
+    // 验证方法被调用
+    verify(userRepository, times(1)).findById(1L);
+  }
+}</code></pre>
+
+  <h2>5. Spring Boot 集成测试</h2>
+  <pre><code class="language-java">@SpringBootTest  // 启动整个 Spring 上下文
+class WebIntegrationTest {
+
+  @Autowired
+  private TestRestTemplate restTemplate;
+
+  @Test
+  void testGetUsers() {
+    ResponseEntity&lt;List&gt; response = restTemplate.getForEntity(
+        "/api/users", List.class
+    );
+    assertEquals(200, response.getStatusCode().value());
+  }
+}
+
+// 只测 Web 层（更快）
+@WebMvcTest(UserController.class)
+class UserControllerTest {
+  @Autowired
+  private MockMvc mockMvc;
+
+  @Test
+  void testList() throws Exception {
+    mockMvc.perform(get("/api/users"))
+        .andExpect(status().isOk());
+  }
+}</code></pre>
+
+  <h2>6. 测试覆盖率</h2>
+  <pre><code class="language-bash"># 运行所有测试
+mvn test
+
+# 带覆盖率
+mvn test jacoco:report
+# 报告在 target/site/jacoco/index.html</code></pre>
+
+  <div class="callout tip">
+    <div class="callout-title">测试金字塔</div>
+    <pre><code>        E2E（少量）
+         /\
+        /  \
+       /集成 \
+      /  测试  \
+     /__________\
+    /            \
+   /  单元测试     \
+  /  （大量）       \
+ /__________________\</code></pre>
+    单元测试应占大头（70%+），快、覆盖广。
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L10</code> 测试 <code>mvn test</code>，看测试结果
+    <br><br>
+    <strong>练习 2：</strong> 在 <code>UserServiceTest</code> 加一个测试：验证 <code>getUser(id)</code> 不存在时抛异常
+    <br><br>
+    <strong>练习 3：</strong> 给 <code>L07</code> 的 <code>UserService</code> 写完整 mock 测试
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>单元测试和集成测试的区别？你应该写哪个更多？</li>
+      <li>为什么 mock 比真实对象更好？什么场景必须用真实对象？</li>
+    </ol>
+  </div>
+
+  <p>测试基础打好后，进入 <a href="L11-rest-api/lesson.html">L11 RESTful API 设计</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L09-logging/lesson.html">← L09</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L11-rest-api/lesson.html">L11 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

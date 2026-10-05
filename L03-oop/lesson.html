@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L03: 面向对象编程 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L03 / 22</span></span>
+  <a href="L04-collections/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L03">
+  <h1><span class="course-tag">L03</span> 面向对象编程（OOP）</h1>
+  <div class="meta">
+    <span>⏱ 2.5 小时</span>
+    <span>📦 Java 基础</span>
+    <span>🎯 核心概念</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">对前端工程师的 OOP</div>
+    JavaScript 的 ES6 class 写法和 Java class 看起来很像，但底层和语义差别很大。Java 的 OOP 是<strong>真正的、严格的、强制</strong>的面向对象。
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握类、对象、构造方法</li>
+      <li>理解封装、继承、多态</li>
+      <li>会用接口和抽象类</li>
+    </ul>
+  </div>
+
+  <h2>1. 类与对象</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>class Person {
+  constructor(name, age) {
+    this.name = name;
+    this.age = age;
+  }
+  greet() {
+    return `Hello, I'm ${this.name}`;
+  }
+}
+
+const john = new Person("John", 25);
+console.log(john.greet());</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>public class Person {
+  // 字段（属性）—— 私有
+  private String name;
+  private int age;
+
+  // 构造方法
+  public Person(String name, int age) {
+    this.name = name;
+    this.age = age;
+  }
+
+  // 方法
+  public String greet() {
+    return "Hello, I'm " + this.name;
+  }
+
+  // Getter / Setter
+  public String getName() { return name; }
+  public void setName(String name) { this.name = name; }
+}
+
+Person john = new Person("John", 25);
+System.out.println(john.greet());</code></pre>
+    </div>
+  </div>
+
+  <h2>2. 三大特性：封装</h2>
+  <p>封装 = <strong>把数据藏起来</strong>，让外部必须通过方法访问。</p>
+  <pre><code class="language-java">public class BankAccount {
+  private double balance;  // 私有：外部不能直接访问
+
+  public void deposit(double amount) {
+    if (amount <= 0) {
+      throw new IllegalArgumentException("金额必须 > 0");
+    }
+    this.balance += amount;  // 在方法里加校验逻辑
+  }
+
+  public double getBalance() {
+    return balance;
+  }
+}</code></pre>
+
+  <p>为什么？类比：前端不会把组件内部 state 直接暴露给全局，必须通过 props/events。</p>
+
+  <h2>3. 三大特性：继承</h2>
+  <pre><code class="language-java">// 父类
+public class Animal {
+  protected String name;  // protected：子类可访问
+
+  public Animal(String name) {
+    this.name = name;
+  }
+
+  public void speak() {
+    System.out.println("...");
+  }
+}
+
+// 子类
+public class Dog extends Animal {
+  public Dog(String name) {
+    super(name);  // 必须显式调用父类构造
+  }
+
+  @Override  // 注解：标记重写父类方法
+  public void speak() {
+    System.out.println(name + " says: Woof!");
+  }
+}</code></pre>
+
+  <div class="callout warn">
+    <div class="callout-title">Java 单继承</div>
+    Java 类只能 <code>extends</code> 一个父类（不像 C++ 多继承）。想"多重继承"用<strong>接口</strong>。
+  </div>
+
+  <h2>4. 三大特性：多态</h2>
+  <p>多态 = <strong>父类引用指向子类对象</strong>，方法调用看实际类型。</p>
+  <pre><code class="language-java">Animal animal = new Dog("Buddy");
+animal.speak();  // 输出 "Buddy says: Woof!"
+// 编译看 Animal，运行看 Dog
+
+// 好处：写通用代码
+public void makeSpeak(Animal animal) {
+  animal.speak();  // 不用关心具体类型
+}
+
+makeSpeak(new Dog("A"));  // "A says: Woof!"
+makeSpeak(new Cat("B"));  // "B says: Meow!"</code></pre>
+
+  <h2>5. 抽象类 vs 接口</h2>
+  <table>
+    <thead>
+      <tr><th>特性</th><th>抽象类</th><th>接口</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>关键字</td><td><code>abstract class</code></td><td><code>interface</code></td></tr>
+      <tr><td>方法实现</td><td>可有可无</td><td>JDK 8+ 可有 default</td></tr>
+      <tr><td>字段</td><td>可有实例字段</td><td>只能是常量（<code>public static final</code>）</td></tr>
+      <tr><td>继承数量</td><td>单继承</td><td>多实现</td></tr>
+      <tr><td>构造方法</td><td>可有</td><td>不能有</td></tr>
+      <tr><td>使用场景</td><td>有共同行为 + 共同状态</td><td>纯粹定义"能力"</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code class="language-java">// 接口：定义"能做什么"
+public interface Drawable {
+  void draw();  // 抽象方法（默认 public abstract）
+
+  // JDK 8+ default 方法
+  default void print() {
+    System.out.println("Printing...");
+  }
+
+  // JDK 8+ static 方法
+  static Drawable createCircle() {
+    return new Circle();
+  }
+}
+
+// 实现
+public class Circle implements Drawable {
+  @Override
+  public void draw() {
+    System.out.println("Drawing circle");
+  }
+}
+
+// 多实现
+public class Button implements Drawable, Clickable {
+  // ...
+}</code></pre>
+
+  <h2>6. 实战：一个完整例子</h2>
+  <pre><code class="language-java">// 抽象类：所有"形状"有共同特性
+abstract class Shape {
+  protected String color;
+
+  public Shape(String color) {
+    this.color = color;
+  }
+
+  // 抽象方法：子类必须实现
+  public abstract double area();
+
+  public void describe() {
+    System.out.println(color + " shape, area = " + area());
+  }
+}
+
+class Rectangle extends Shape {
+  private double width, height;
+
+  public Rectangle(String color, double w, double h) {
+    super(color);
+    this.width = w;
+    this.height = h;
+  }
+
+  @Override
+  public double area() {
+    return width * height;
+  }
+}
+
+class Circle extends Shape {
+  private double radius;
+
+  public Circle(String color, double r) {
+    super(color);
+    this.radius = r;
+  }
+
+  @Override
+  public double area() {
+    return Math.PI * radius * radius;
+  }
+}
+
+// 使用多态
+public static void main(String[] args) {
+  Shape[] shapes = { new Rectangle("red", 2, 3), new Circle("blue", 5) };
+  for (Shape s : shapes) {
+    s.describe();  // 多态调用
+  }
+}</code></pre>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L03-oop</code> 项目，查看 <code>OOPDemo.java</code> 中所有内部类
+    <br><br>
+    <strong>练习 2：</strong> 自己设计一个 <code>Employee</code> 继承 <code>Person</code>，增加 <code>salary</code> 字段
+    <br><br>
+    <strong>练习 3：</strong> 定义接口 <code>Payable</code>（方法 <code>calculatePay()</code>），让 <code>Employee</code> 实现
+    <br><br>
+    <strong>练习 4：</strong> 写多态：定义 <code>List&lt;Payable&gt;</code>，里面放不同员工，统一调用 <code>calculatePay()</code>
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>Java 的 class 和 JS 的 class，<strong>本质</strong>差别是什么？</li>
+      <li>什么时候用抽象类，什么时候用接口？</li>
+      <li>多态解决了什么问题？没有多态会怎样？</li>
+    </ol>
+  </div>
+
+  <p>OOP 是 Java 的灵魂，多写多练。进入 <a href="L04-collections/lesson.html">L04 集合与泛型</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L02-basic-syntax/lesson.html">← L02</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L04-collections/lesson.html">L04 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

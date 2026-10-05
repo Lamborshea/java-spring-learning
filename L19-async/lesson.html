@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L19: 异步编程 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L19 / 22</span></span>
+  <a href="L20-cache/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L19">
+  <h1><span class="course-tag">L19</span> 异步编程</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 进阶功能</span>
+    <span>🎯 @Async + CompletableFuture</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">为什么要异步？</div>
+    <p>同步：用户下单 → 创建订单 → 扣库存 → 发邮件（<strong>5 秒</strong>，用户等不了）<br>
+    异步：用户下单 → 创建订单 → 扣库存 → 立即返回（<strong>0.5 秒</strong>），发邮件后台慢慢发</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解同步 vs 异步</li>
+      <li>会用 <code>@Async</code> 注解</li>
+      <li>会用 <code>CompletableFuture</code></li>
+      <li>配置线程池</li>
+    </ul>
+  </div>
+
+  <h2>1. 同步 vs 异步</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// 同步
+const result = fetchData();
+use(result);  // 等
+
+// 异步
+fetchData().then(result => use(result));
+
+// async/await
+const result = await fetchData();
+use(result);</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// 同步
+String result = fetchData();
+use(result);  // 等
+
+// 异步（CompletableFuture）
+CompletableFuture&lt;String&gt; future =
+    CompletableFuture.supplyAsync(() -&gt; fetchData());
+future.thenAccept(result -&gt; use(result));
+
+// 多任务并行
+CompletableFuture.allOf(f1, f2, f3)
+    .thenRun(() -&gt; done());</code></pre>
+    </div>
+  </div>
+
+  <h2>2. <code>@Async</code> 入门</h2>
+  <pre><code class="language-java">@SpringBootApplication
+@EnableAsync  // 启用异步
+public class App { ... }
+
+@Service
+public class EmailService {
+
+  @Async  // 异步执行
+  public void sendEmail(String to, String content) {
+    // 耗时的发邮件
+    try { Thread.sleep(2000); } catch (Exception e) {}
+    System.out.println("邮件已发送到 " + to);
+  }
+}
+
+@RestController
+public class OrderController {
+  @Autowired
+  private EmailService emailService;
+
+  @PostMapping("/order")
+  public String create() {
+    emailService.sendEmail("user@example.com", "订单创建");  // 不等待
+    return "订单创建成功";  // 立即返回
+  }
+}</code></pre>
+
+  <h2>3. 线程池配置</h2>
+  <pre><code class="language-yaml">spring:
+  task:
+    execution:
+      pool:
+        core-size: 4        # 核心线程
+        max-size: 16        # 最大线程
+        queue-capacity: 100 # 队列容量
+        thread-name-prefix: async-</code></pre>
+
+  <p>或自定义：</p>
+  <pre><code class="language-java">@Configuration
+public class AsyncConfig {
+
+  @Bean("taskExecutor")
+  public Executor taskExecutor() {
+    ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+    executor.setCorePoolSize(4);
+    executor.setMaxPoolSize(16);
+    executor.setQueueCapacity(100);
+    executor.setThreadNamePrefix("async-");
+    executor.initialize();
+    return executor;
+  }
+}
+
+@Async("taskExecutor")
+public void method() { ... }</code></pre>
+
+  <h2>4. <code>CompletableFuture</code></h2>
+  <pre><code class="language-java">// 单个异步
+CompletableFuture&lt;String&gt; future = CompletableFuture.supplyAsync(() -&gt; {
+  // 耗时操作
+  return "result";
+});
+
+future.thenAccept(result -&gt; System.out.println(result));
+
+// 并行执行多个
+CompletableFuture&lt;User&gt; f1 = CompletableFuture.supplyAsync(() -&gt; userService.findById(1L));
+CompletableFuture&lt;List&lt;Order&gt;&gt; f2 = CompletableFuture.supplyAsync(() -&gt; orderService.findByUser(1L));
+
+CompletableFuture.allOf(f1, f2).join();  // 等全部完成
+
+// 任一完成
+CompletableFuture.anyOf(f1, f2).join();
+
+// 链式转换
+CompletableFuture&lt;String&gt; f = CompletableFuture
+    .supplyAsync(() -&gt; "hello")
+    .thenApply(s -&gt; s + " world")
+    .thenApply(String::toUpperCase);
+// "HELLO WORLD"</code></pre>
+
+  <table>
+    <thead>
+      <tr><th>CompletableFuture</th><th>JS Promise</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>thenApply</code></td><td><code>.then(value => newValue)</code></td></tr>
+      <tr><td><code>thenAccept</code></td><td><code>.then(value => use(value))</code></td></tr>
+      <tr><td><code>thenRun</code></td><td><code>.then(() => {})</code></td></tr>
+      <tr><td><code>thenCompose</code></td><td><code>async/await</code></td></tr>
+      <tr><td><code>allOf</code></td><td><code>Promise.all</code></td></tr>
+      <tr><td><code>anyOf</code></td><td><code>Promise.race</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. 异常处理</h2>
+  <pre><code class="language-java">CompletableFuture&lt;String&gt; f = CompletableFuture
+    .supplyAsync(() -&gt; {
+      if (true) throw new RuntimeException("err");
+      return "ok";
+    })
+    .exceptionally(ex -&gt; "fallback: " + ex.getMessage());
+
+// 或者用 handle
+CompletableFuture&lt;String&gt; f2 = CompletableFuture
+    .supplyAsync(() -&gt; "data")
+    .handle((result, ex) -&gt; ex != null ? "err" : result);</code></pre>
+
+  <div class="callout warn">
+    <div class="callout-title">常见坑</div>
+    <ul>
+      <li><code>@Async</code> 方法必须 <code>public</code>，且同类内调用无效</li>
+      <li>异步方法不能返回 <code>void</code> 给调用方传递异常</li>
+      <li>线程池满了要排队，配置合理</li>
+    </ul>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>L19</code>，看 <code>AsyncDemoApplication</code> 演示
+    <br><br>
+    <strong>练习 2：</strong> 实现"批量发邮件"：用 <code>CompletableFuture.allOf</code> 并行发 10 封
+    <br><br>
+    <strong>练习 3：</strong> 配置线程池，记录执行耗时
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>什么场景用异步？什么场景用同步？</li>
+      <li><code>@Async</code> 和消息队列（MQ）有什么区别？</li>
+      <li>线程池大小怎么定？公式是什么？</li>
+    </ol>
+  </div>
+
+  <p>异步掌握后，进入 <a href="L20-cache/lesson.html">L20 缓存</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L18-transaction/lesson.html">← L18</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L20-cache/lesson.html">L20 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

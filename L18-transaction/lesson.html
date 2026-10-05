@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L18: 事务管理 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L18 / 22</span></span>
+  <a href="L19-async/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L18">
+  <h1><span class="course-tag">L18</span> 事务管理</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 数据访问</span>
+    <span>🎯 @Transactional</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">什么是事务？</div>
+    <p>一组数据库操作，要么全部成功，要么全部失败。<br>
+    <strong>典型场景</strong>：转账（A 减 100，B 加 100），不能 A 减了 B 没加。</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解 ACID 特性</li>
+      <li>会用 <code>@Transactional</code></li>
+      <li>理解传播行为和隔离级别</li>
+    </ul>
+  </div>
+
+  <h2>1. ACID 四大特性</h2>
+  <table>
+    <thead>
+      <tr><th>特性</th><th>含义</th><th>JS 类比</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>A</strong>tomic 原子性</td><td>全部成功或全部回滚</td><td>Promise.all 要么全成功要么全失败</td></tr>
+      <tr><td><strong>C</strong>onsistency 一致性</td><td>数据约束不变</td><td>数据库约束</td></tr>
+      <tr><td><strong>I</strong>solation 隔离性</td><td>并发事务互不干扰</td><td>数据库锁</td></tr>
+      <tr><td><strong>D</strong>urability 持久性</td><td>提交后永久保存</td><td>写入磁盘</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. <code>@Transactional</code> 基础</h2>
+  <pre><code class="language-java">@Service
+public class TransferService {
+
+  @Autowired
+  private AccountRepository accountRepo;
+
+  @Transactional   // ← 这一行就够了
+  public void transfer(Long fromId, Long toId, BigDecimal amount) {
+    Account from = accountRepo.findById(fromId).orElseThrow();
+    Account to = accountRepo.findById(toId).orElseThrow();
+
+    from.setBalance(from.getBalance().subtract(amount));
+    to.setBalance(to.getBalance().add(amount));
+
+    accountRepo.save(from);
+    accountRepo.save(to);
+    // 任何一步抛异常，全部回滚
+  }
+}</code></pre>
+
+  <h2>3. 传播行为（Propagation）</h2>
+  <p>事务方法 A 调用事务方法 B，怎么处理？</p>
+  <table>
+    <thead>
+      <tr><th>行为</th><th>说明</th><th>使用场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>REQUIRED</code>（默认）</td><td>有事务则加入，没有则新建</td><td>大多数</td></tr>
+      <tr><td><code>REQUIRES_NEW</code></td><td>总是新建，挂起外层</td><td>独立日志/审计</td></tr>
+      <tr><td><code>NESTED</code></td><td>嵌套（Savepoint）</td><td>局部回滚</td></tr>
+      <tr><td><code>SUPPORTS</code></td><td>有则加入，无则无事务</td><td>查询</td></tr>
+      <tr><td><code>NOT_SUPPORTED</code></td><td>非事务执行</td><td>统计</td></tr>
+      <tr><td><code>MANDATORY</code></td><td>必须在事务中，否则抛异常</td><td>核心业务</td></tr>
+      <tr><td><code>NEVER</code></td><td>必须不在事务中</td><td>只读</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code class="language-java">@Service
+public class OrderService {
+  @Autowired
+  private AuditService auditService;
+
+  @Transactional
+  public void createOrder() {
+    orderRepository.save(new Order());
+    // 主业务事务
+    auditService.log("订单创建");
+    // 审计失败不应回滚主业务
+  }
+}
+
+@Service
+public class AuditService {
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
+  public void log(String message) {
+    auditRepository.save(new AuditLog(message));
+    // 独立事务，外层失败不影响
+  }
+}</code></pre>
+
+  <h2>4. 隔离级别（Isolation）</h2>
+  <table>
+    <thead>
+      <tr><th>级别</th><th>脏读</th><th>不可重复读</th><th>幻读</th><th>性能</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>READ_UNCOMMITTED</code></td><td>✓</td><td>✓</td><td>✓</td><td>最高</td></tr>
+      <tr><td><code>READ_COMMITTED</code></td><td>✗</td><td>✓</td><td>✓</td><td>中等</td></tr>
+      <tr><td><code>REPEATABLE_READ</code>（MySQL 默认）</td><td>✗</td><td>✗</td><td>✓</td><td>较低</td></tr>
+      <tr><td><code>SERIALIZABLE</code></td><td>✗</td><td>✗</td><td>✗</td><td>最低</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code class="language-java">@Transactional(isolation = Isolation.READ_COMMITTED)
+public void someMethod() { ... }</code></pre>
+
+  <h2>5. 回滚规则</h2>
+  <p><strong>默认行为</strong>：</p>
+  <ul>
+    <li><code>RuntimeException</code> 及其子类 → <strong>回滚</strong></li>
+    <li>checked <code>Exception</code> → <strong>不回滚</strong></li>
+  </ul>
+
+  <pre><code class="language-java">@Transactional(
+  rollbackFor = Exception.class,           // 任何异常都回滚
+  noRollbackFor = BusinessWarning.class   // 业务警告不回滚
+)
+public void method() { ... }</code></pre>
+
+  <h2>6. 实战演示：转账</h2>
+  <pre><code class="language-java">@Service
+public class TransferService {
+  @Autowired
+  private AccountRepository accountRepo;
+
+  @Transactional
+  public void transfer(Long fromId, Long toId, BigDecimal amount) {
+    Account from = accountRepo.findById(fromId)
+        .orElseThrow(() -&gt; new BusinessException(404, "转出账户不存在"));
+    Account to = accountRepo.findById(toId)
+        .orElseThrow(() -&gt; new BusinessException(404, "转入账户不存在"));
+
+    if (from.getBalance().compareTo(amount) &lt; 0) {
+      throw new BusinessException(400, "余额不足");
+    }
+
+    from.setBalance(from.getBalance().subtract(amount));
+    to.setBalance(to.setBalance(to.getBalance().add(amount)));
+    // 如果 to.setBalance 写错了抛异常，整个 transfer 回滚
+  }
+}</code></pre>
+
+  <h2>7. 常见坑</h2>
+
+  <div class="callout warn">
+    <div class="callout-title">⚠️ @Transactional 失效场景</div>
+    <ol>
+      <li><strong>方法不是 public</strong>：Spring 不会代理非 public 方法</li>
+      <li><strong>同类方法调用</strong>：<code>this.method()</code> 绕过代理</li>
+      <li><strong>异常被 catch 了</strong>：try-catch 后没抛出，事务管理器看不到异常</li>
+      <li><strong>抛 checked exception</strong>：默认不回滚，要 <code>rollbackFor = Exception.class</code></li>
+      <li><strong>数据库不支持</strong>：MyISAM 不支持事务，要用 InnoDB</li>
+    </ol>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>L18</code>，看 <code>TransactionDemoApplication</code> 的 <code>TransferService</code>
+    <br><br>
+    <strong>练习 2：</strong> 故意让 <code>transfer</code> 中途抛异常，验证余额不变
+    <br><br>
+    <strong>练习 3：</strong> 写一个"下单 + 扣库存 + 创建支付"的综合事务
+    <br><br>
+    <strong>练习 4：</strong> 把 <code>audit</code> 改成 <code>REQUIRES_NEW</code>，验证即使主事务回滚审计也写入
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么 checked exception 默认不回滚？</li>
+      <li><code>REQUIRES_NEW</code> 在什么场景用？滥用会怎样？</li>
+      <li>事务隔离级别越高越好吗？为什么？</li>
+    </ol>
+  </div>
+
+  <p>事务掌握后，进入 <a href="L19-async/lesson.html">L19 异步编程</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L17-mapping/lesson.html">← L17</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L19-async/lesson.html">L19 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

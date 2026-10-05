@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Java Spring Boot 学习课程 | 22 节课从零到独立开发</title>
+<link rel="stylesheet" href="assets/lesson.css">
+<style>
+.hero {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #92400e 100%);
+  color: white;
+  padding: 3rem 2rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.2);
+}
+.hero h1 { color: white; font-size: 2.5rem; margin-top: 0; }
+.hero p { color: rgba(255,255,255,0.9); font-size: 1.1rem; max-width: 720px; }
+.hero .meta-row { display: flex; gap: 1.5rem; flex-wrap: wrap; margin-top: 1.5rem; font-size: 0.95rem; }
+.hero .meta-row span { background: rgba(255,255,255,0.15); padding: 0.3rem 0.8rem; border-radius: 20px; }
+.cta {
+  display: inline-block;
+  margin-top: 1.5rem;
+  padding: 0.7rem 1.5rem;
+  background: white;
+  color: #d97706;
+  font-weight: 600;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+.cta:hover { transform: translateY(-2px); text-decoration: none; }
+
+.progress {
+  background: #fff8f0;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+}
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #fef3c7;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+  width: 0%;
+  transition: width 0.3s;
+}
+
+.stage {
+  margin: 2rem 0;
+}
+.stage h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.stage h2 .stage-num {
+  display: inline-block;
+  background: #d97706;
+  color: white;
+  width: 32px;
+  height: 32px;
+  line-height: 32px;
+  text-align: center;
+  border-radius: 50%;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.courses {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.course-card {
+  display: block;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.2rem;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s;
+  position: relative;
+}
+.course-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15);
+  transform: translateY(-2px);
+  text-decoration: none;
+}
+.course-card .num {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 3px;
+  margin-bottom: 0.5rem;
+}
+.course-card h3 {
+  font-size: 1.05rem;
+  margin: 0.3rem 0 0.5rem;
+  color: #1a1a1a;
+}
+.course-card p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin: 0.3rem 0 0.5rem;
+  line-height: 1.5;
+}
+.course-card .tags { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-top: 0.5rem; }
+.course-card .tag {
+  font-size: 0.7rem;
+  background: #f5f5f5;
+  color: #666;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+}
+.course-card.done::before {
+  content: "✓";
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  color: #16a34a;
+  font-weight: 700;
+  font-size: 1.2rem;
+}
+
+@media (max-width: 640px) {
+  .hero { padding: 2rem 1rem; }
+  .hero h1 { font-size: 1.8rem; }
+  .courses { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<main class="container" style="max-width: 1100px;">
+
+<div class="hero">
+  <h1>Java Spring Boot 后端学习</h1>
+  <p>从 JavaScript 工程师视角，3 个月从零基础到独立交付 Spring Boot 后端项目。共 22 节课，每节都有可运行代码和 HTML 教程。</p>
+  <div class="meta-row">
+    <span>📚 22 节</span>
+    <span>⏱ ~120 小时</span>
+    <span>🎯 Spring Boot 3</span>
+    <span>💼 实战驱动</span>
+  </div>
+  <a class="cta" href="L01-environment/lesson.html">开始学习 L01 →</a>
+</div>
+
+<div class="progress">
+  <div style="display: flex; justify-content: space-between; align-items: center;">
+    <strong>学习进度</strong>
+    <span id="progress-text">已完成 0 / 22 节</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+  <p style="font-size: 0.85rem; color: #666; margin: 0;">💡 提示：完成一节后，浏览器会自动记住（localStorage）</p>
+</div>
+
+<!-- 阶段一：Java 基础 -->
+<section class="stage">
+  <h2><span class="stage-num">1</span> 阶段一：Java 核心基础（Week 1-4）</h2>
+  <p style="color: #666;">从 JS 视角理解 Java，掌握基本语法、OOP、集合、函数式编程。</p>
+  <div class="courses">
+    <a class="course-card" href="L01-environment/lesson.html">
+      <span class="num">L01</span>
+      <h3>开发环境搭建</h3>
+      <p>JDK 17 + Maven + IntelliJ IDEA，跑通第一个程序</p>
+      <div class="tags"><span class="tag">环境</span><span class="tag">2h</span></div>
+    </a>
+    <a class="course-card" href="L02-basic-syntax/lesson.html">
+      <span class="num">L02</span>
+      <h3>基础语法与数据类型</h3>
+      <p>8 种基本类型、字符串、控制流、== vs equals</p>
+      <div class="tags"><span class="tag">语法</span><span class="tag">2h</span></div>
+    </a>
+    <a class="course-card" href="L03-oop/lesson.html">
+      <span class="num">L03</span>
+      <h3>面向对象编程</h3>
+      <p>类、对象、封装、继承、多态、接口</p>
+      <div class="tags"><span class="tag">OOP</span><span class="tag">2.5h</span></div>
+    </a>
+    <a class="course-card" href="L04-collections/lesson.html">
+      <span class="num">L04</span>
+      <h3>集合与泛型</h3>
+      <p>List / Set / Map、泛型、Stream API</p>
+      <div class="tags"><span class="tag">集合</span><span class="tag">2h</span></div>
+    </a>
+    <a class="course-card" href="L05-functional/lesson.html">
+      <span class="num">L05</span>
+      <h3>函数式编程</h3>
+      <p>Lambda、方法引用、Stream 进阶、Optional</p>
+      <div class="tags"><span class="tag">FP</span><span class="tag">1.5h</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- 阶段二：Spring Boot 核心 -->
+<section class="stage">
+  <h2><span class="stage-num">2</span> 阶段二：Spring Boot 核心（Week 5-7）</h2>
+  <p style="color: #666;">理解 IoC / DI、配置管理、日志、测试 —— Spring 的灵魂。</p>
+  <div class="courses">
+    <a class="course-card" href="L06-spring-boot-intro/lesson.html">
+      <span class="num">L06</span>
+      <h3>Spring Boot 入门</h3>
+      <p>第一个 Spring Boot 项目，跑通 REST 接口</p>
+      <div class="tags"><span class="tag">入门</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L07-ioc-di/lesson.html">
+      <span class="num">L07</span>
+      <h3>IoC 容器与依赖注入</h3>
+      <p>@Component / @Service / @Repository，三种注入方式</p>
+      <div class="tags"><span class="tag">核心</span><span class="tag">2h</span></div>
+    </a>
+    <a class="course-card" href="L08-config/lesson.html">
+      <span class="num">L08</span>
+      <h3>配置管理</h3>
+      <p>application.yml、多环境、@Value、@ConfigurationProperties</p>
+      <div class="tags"><span class="tag">配置</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L09-logging/lesson.html">
+      <span class="num">L09</span>
+      <h3>日志实战</h3>
+      <p>SLF4J + Logback、占位符、日志级别</p>
+      <div class="tags"><span class="tag">日志</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L10-testing/lesson.html">
+      <span class="num">L10</span>
+      <h3>单元测试</h3>
+      <p>JUnit 5、Mockito、@SpringBootTest</p>
+      <div class="tags"><span class="tag">测试</span><span class="tag">2h</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- 阶段三：Web 开发 -->
+<section class="stage">
+  <h2><span class="stage-num">3</span> 阶段三：Web 开发（Week 8-10）</h2>
+  <p style="color: #666;">RESTful API 设计、参数处理、统一响应、异常、参数校验。</p>
+  <div class="courses">
+    <a class="course-card" href="L11-rest-api/lesson.html">
+      <span class="num">L11</span>
+      <h3>RESTful API 设计</h3>
+      <p>资源命名、HTTP 方法、状态码</p>
+      <div class="tags"><span class="tag">设计</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L12-params/lesson.html">
+      <span class="num">L12</span>
+      <h3>请求参数处理</h3>
+      <p>@PathVariable / @RequestParam / @RequestBody / @RequestHeader</p>
+      <div class="tags"><span class="tag">参数</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L13-response/lesson.html">
+      <span class="num">L13</span>
+      <h3>响应统一封装</h3>
+      <p>ApiResponse&lt;T&gt; 设计、分页、ResponseEntity</p>
+      <div class="tags"><span class="tag">响应</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L14-exception/lesson.html">
+      <span class="num">L14</span>
+      <h3>全局异常处理</h3>
+      <p>@ControllerAdvice、@ExceptionHandler、业务异常体系</p>
+      <div class="tags"><span class="tag">异常</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L15-validation/lesson.html">
+      <span class="num">L15</span>
+      <h3>参数校验</h3>
+      <p>Bean Validation：@NotBlank / @Email / @Size / 分组校验</p>
+      <div class="tags"><span class="tag">校验</span><span class="tag">1.5h</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- 阶段四：数据访问 -->
+<section class="stage">
+  <h2><span class="stage-num">4</span> 阶段四：数据访问（Week 8-9）</h2>
+  <p style="color: #666;">JPA 入门、实体关系、事务管理。</p>
+  <div class="courses">
+    <a class="course-card" href="L16-jpa/lesson.html">
+      <span class="num">L16</span>
+      <h3>Spring Data JPA 入门</h3>
+      <p>@Entity、JpaRepository、方法名派生查询、@Query</p>
+      <div class="tags"><span class="tag">JPA</span><span class="tag">2h</span></div>
+    </a>
+    <a class="course-card" href="L17-mapping/lesson.html">
+      <span class="num">L17</span>
+      <h3>实体关系映射</h3>
+      <p>@OneToMany / @ManyToOne / @ManyToMany、LAZY vs EAGER、N+1</p>
+      <div class="tags"><span class="tag">关系</span><span class="tag">2h</span></div>
+    </a>
+    <a class="course-card" href="L18-transaction/lesson.html">
+      <span class="num">L18</span>
+      <h3>事务管理</h3>
+      <p>@Transactional、ACID、传播行为、隔离级别</p>
+      <div class="tags"><span class="tag">事务</span><span class="tag">2h</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- 阶段五：进阶功能 -->
+<section class="stage">
+  <h2><span class="stage-num">5</span> 阶段五：进阶功能（Week 9-10）</h2>
+  <p style="color: #666;">异步、缓存、安全、API 文档 —— 进阶必备技能。</p>
+  <div class="courses">
+    <a class="course-card" href="L19-async/lesson.html">
+      <span class="num">L19</span>
+      <h3>异步编程</h3>
+      <p>@Async、CompletableFuture、线程池</p>
+      <div class="tags"><span class="tag">异步</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L20-cache/lesson.html">
+      <span class="num">L20</span>
+      <h3>缓存</h3>
+      <p>@Cacheable / @CacheEvict、Redis、缓存问题</p>
+      <div class="tags"><span class="tag">缓存</span><span class="tag">1.5h</span></div>
+    </a>
+    <a class="course-card" href="L21-security/lesson.html">
+      <span class="num">L21</span>
+      <h3>安全（Spring Security + JWT）</h3>
+      <p>认证 / 授权、JWT、BCrypt 密码加密、过滤器链</p>
+      <div class="tags"><span class="tag">安全</span><span class="tag">3h</span></div>
+    </a>
+    <a class="course-card" href="L22-api-docs/lesson.html">
+      <span class="num">L22</span>
+      <h3>API 文档自动生成</h3>
+      <p>SpringDoc / OpenAPI 3、Knife4j、API 版本管理</p>
+      <div class="tags"><span class="tag">文档</span><span class="tag">1h</span></div>
+    </a>
+  </div>
+</section>
+
+<!-- 阶段六：综合项目 -->
+<section class="stage">
+  <h2><span class="stage-num">6</span> 阶段六：综合项目（Week 11-12）</h2>
+  <p style="color: #666;">学完上面的课程，做一个完整项目巩固所有知识。</p>
+  <div class="courses">
+    <a class="course-card" href="spring-boot-webapp/README.md">
+      <span class="num">PROJ</span>
+      <h3>📦 任务管理系统（综合项目）</h3>
+      <p>用户 / 任务 / 团队三大模块，含完整 CRUD、JWT 鉴权、Swagger 文档</p>
+      <div class="tags"><span class="tag">综合</span><span class="tag">实战</span></div>
+    </a>
+  </div>
+</section>
+
+<hr style="margin: 3rem 0 2rem;">
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+  <a href="MISSION.md" style="display: block; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit;">
+    <strong>🎯 学习目标</strong>
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0.3rem 0 0;">了解我为什么学、学什么</p>
+  </a>
+  <a href="RESOURCES.md" style="display: block; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit;">
+    <strong>📚 学习资源</strong>
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0.3rem 0 0;">官方文档、教程、工具</p>
+  </a>
+  <a href="NOTES.md" style="display: block; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit;">
+    <strong>📝 学习笔记</strong>
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0.3rem 0 0;">偏好、决策、踩坑记录</p>
+  </a>
+  <a href="SpringBoot学习路线图.md" style="display: block; padding: 1rem; border: 1px solid var(--border); border-radius: 6px; text-decoration: none; color: inherit;">
+    <strong>🗺️ 学习路线图</strong>
+    <p style="font-size: 0.85rem; color: var(--muted); margin: 0.3rem 0 0;">12 周详细计划</p>
+  </a>
+</div>
+
+<div class="callout info" style="margin-top: 2rem;">
+  <div class="callout-title">💡 学习建议</div>
+  <ul>
+    <li><strong>每节先看 lesson.html 教程</strong>，理解概念后再看代码</li>
+    <li><strong>亲手跑一遍每个示例</strong>，改动看效果</li>
+    <li><strong>做"动手练习"</strong>，写自己的代码</li>
+    <li><strong>回答"思考题"</strong>，内化知识</li>
+    <li>遇到问题随时问我（你的 Java 私教）</li>
+  </ul>
+</div>
+
+</main>
+
+<script>
+// 进度跟踪
+(function() {
+  const courseIds = ['L01','L02','L03','L04','L05','L06','L07','L08','L09','L10',
+                     'L11','L12','L13','L14','L15','L16','L17','L18','L19','L20',
+                     'L21','L22'];
+  let done = 0;
+  courseIds.forEach(id => {
+    if (localStorage.getItem('done-' + id) === '1') {
+      done++;
+      const link = document.querySelector(`[href*="${id}-"]`);
+      // 标记已完成
+      if (link) link.classList.add('done');
+    }
+  });
+  const fill = document.getElementById('progress-fill');
+  const text = document.getElementById('progress-text');
+  if (fill) fill.style.width = (done / 22 * 100) + '%';
+  if (text) text.textContent = `已完成 ${done} / 22 节 (${Math.round(done/22*100)}%)`;
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L07: IoC 容器与依赖注入 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L07 / 22</span></span>
+  <a href="L08-config/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L07">
+  <h1><span class="course-tag">L07</span> IoC 容器与依赖注入</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 Spring Boot 核心</span>
+    <span>🎯 Spring 的灵魂</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">Spring 的灵魂</div>
+    IoC 和 DI 是 Spring 最核心的设计思想。<strong>不理解这个，后面所有内容都会别扭</strong>。
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解 IoC（控制反转）是什么</li>
+      <li>掌握 DI（依赖注入）三种方式</li>
+      <li>会用 <code>@Component</code> / <code>@Service</code> / <code>@Repository</code></li>
+      <li>理解 Bean 作用域</li>
+    </ul>
+  </div>
+
+  <h2>1. 没有 IoC 之前</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// 传统方式：自己 new
+class UserService {
+  constructor() {
+    this.userRepository = new UserRepository();
+    // 紧耦合：换实现要改源码
+  }
+}</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java (传统)</span>
+<pre><code>// 自己 new
+public class UserService {
+  private UserRepository userRepository =
+      new UserRepository();
+  // 紧耦合：要换实现必须改源码
+}</code></pre>
+    </div>
+  </div>
+
+  <h2>2. IoC 方式：容器帮你创建</h2>
+  <p><strong>IoC = Inversion of Control（控制反转）</strong></p>
+  <p>"控制权"从你手里反转到了 Spring 容器。对象由容器创建，依赖由容器注入。</p>
+
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// 类比 Vue 的 provide/inject
+// 或 React Context
+const UserContext = createContext();
+
+// 父组件 provide
+provide('userService', new UserService());
+
+// 子组件 inject
+const userService = inject('userService');</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java (Spring)</span>
+<pre><code>@Service
+public class UserService {
+  private final UserRepository userRepository;
+
+  // 容器自动注入，不需要 new
+  public UserService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">IoC 的本质</div>
+    <p>不要问"我该 new 谁"，问"我需要谁，Spring 会给我"。</p>
+    <p>类似餐厅：你点菜，服务员（容器）把菜（Bean）端给你，而不是你自己下厨。</p>
+  </div>
+
+  <h2>3. 三种注入方式</h2>
+  <table>
+    <thead>
+      <tr><th>方式</th><th>推荐度</th><th>代码</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>构造方法注入</td><td>⭐⭐⭐⭐⭐</td><td>通过构造函数</td></tr>
+      <tr><td>Setter 注入</td><td>⭐⭐⭐</td><td>通过 setter 方法</td></tr>
+      <tr><td>字段注入</td><td>⭐（不推荐）</td><td>直接在字段上加 <code>@Autowired</code></td></tr>
+    </tbody>
+  </table>
+
+  <pre><code class="language-java">// 1️⃣ 构造方法注入（推荐）
+@Service
+public class UserService {
+  private final UserRepository userRepository;
+
+  public UserService(UserRepository userRepository) {
+    this.userRepository = userRepository;
+  }
+}
+
+// 用 Lombok 简化
+@Service
+@RequiredArgsConstructor  // 自动生成包含 final 字段的构造
+public class UserService {
+  private final UserRepository userRepository;
+  // 不用手写构造方法
+}
+
+// 2️⃣ Setter 注入
+@Service
+public class UserService {
+  private UserRepository userRepository;
+
+  @Autowired
+  public void setUserRepository(UserRepository r) {
+    this.userRepository = r;
+  }
+}
+
+// 3️⃣ 字段注入（不推荐，测试困难）
+@Service
+public class UserService {
+  @Autowired
+  private UserRepository userRepository;  // 直接注入字段
+}</code></pre>
+
+  <h2>4. 三个核心注解</h2>
+  <p>它们都是 <code>@Component</code> 的"特化"，作用一样，名字不同，方便分类：</p>
+  <table>
+    <thead>
+      <tr><th>注解</th><th>用途</th><th>层级</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@Component</code></td><td>通用组件</td><td>通用</td></tr>
+      <tr><td><code>@Service</code></td><td>业务逻辑层</td><td>Service</td></tr>
+      <tr><td><code>@Repository</code></td><td>数据访问层</td><td>Repository / DAO</td></tr>
+      <tr><td><code>@Controller</code></td><td>控制器（Web）</td><td>Controller</td></tr>
+      <tr><td><code>@RestController</code></td><td>REST 控制器</td><td>Controller</td></tr>
+      <tr><td><code>@Configuration</code></td><td>配置类</td><td>配置</td></tr>
+    </tbody>
+  </table>
+
+  <h2>5. Bean 作用域</h2>
+  <p>Bean 作用域 = <strong>容器怎么创建 Bean 实例</strong>。</p>
+  <table>
+    <thead>
+      <tr><th>作用域</th><th>说明</th><th>使用场景</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>singleton</code>（默认）</td><td>整个应用只有一个实例</td><td>无状态服务（最常用）</td></tr>
+      <tr><td><code>prototype</code></td><td>每次 <code>getBean()</code> 都创建新实例</td><td>有状态对象</td></tr>
+      <tr><td><code>request</code></td><td>每个 HTTP 请求一个实例</td><td>Web 请求作用域</td></tr>
+      <tr><td><code>session</code></td><td>每个 HTTP 会话一个实例</td><td>用户会话数据</td></tr>
+    </tbody>
+  </table>
+
+  <pre><code class="language-java">@Configuration
+public class AppConfig {
+
+  @Bean  // 默认 singleton
+  public EmailService emailService() {
+    return new EmailService();
+  }
+
+  @Bean
+  @Scope("prototype")  // 每次都新创建
+  public ReportGenerator reportGenerator() {
+    return new ReportGenerator();
+  }
+}</code></pre>
+
+  <h2>6. 代码演示</h2>
+  <p>运行 <code>L07</code> 后，控制台会输出：</p>
+  <pre><code class="language-text">[UserRepository] 构造：创建了一个 Repository
+[UserService] 构造：注入了 UserRepository
+=== Spring 容器中的所有 Bean ===
+ - iocDiDemoApplication
+ - userService
+ - userRepository
+ - ...
+=== 共 50+ 个 Bean ===</code></pre>
+
+  <p>观察两点：</p>
+  <ol>
+    <li>Spring 容器自动管理了所有 <code>@Service</code>、<code>@Repository</code> 等</li>
+    <li><code>UserService</code> 创建时，<code>UserRepository</code> 已经准备好了（容器自动注入）</li>
+  </ol>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L07</code>，看容器里有多少 Bean
+    <br><br>
+    <strong>练习 2：</strong> 故意在 <code>UserService</code> 构造时去掉 <code>UserRepository</code> 参数，看启动会不会报错
+    <br><br>
+    <strong>练习 3：</strong> 添加一个 <code>OrderService</code>，让它注入 <code>UserService</code>，构造参数 <code>UserService userService</code>
+    <br><br>
+    <strong>练习 4：</strong> 在 <code>AppConfig</code> 改 <code>emailNotification</code> 为 <code>prototype</code>，从容器中获取两次，看是否是同一实例
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>IoC 到底解决了什么问题？没有 IoC 会怎样？</li>
+      <li>为什么推荐构造方法注入，而不是字段注入？</li>
+      <li><code>@Component</code>、<code>@Service</code>、<code>@Repository</code> 作用相同，为什么分三个？</li>
+    </ol>
+  </div>
+
+  <p>理解 IoC/DI 后，进入 <a href="L08-config/lesson.html">L08 配置管理</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L06-spring-boot-intro/lesson.html">← L06</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L08-config/lesson.html">L08 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

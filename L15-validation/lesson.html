@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L15: 参数校验 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L15 / 22</span></span>
+  <a href="L16-jpa/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L15">
+  <h1><span class="course-tag">L15</span> 参数校验</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Web 开发</span>
+    <span>🎯 Bean Validation</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">为什么要校验？</div>
+    <p>用户的输入永远是不可信的。</p>
+    <ul>
+      <li>必填字段没传</li>
+      <li>邮箱格式错</li>
+      <li>字符串超长</li>
+      <li>年龄负数</li>
+    </ul>
+    <p>这些必须在<strong>进入业务逻辑之前</strong>就拦住，否则会产生脏数据甚至崩溃。</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 JSR-380 常用注解</li>
+      <li>会用 <code>@Valid</code> 触发校验</li>
+      <li>处理校验失败异常</li>
+    </ul>
+  </div>
+
+  <h2>1. 引入依赖</h2>
+  <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-validation&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+
+  <h2>2. 常用注解</h2>
+  <table>
+    <thead>
+      <tr><th>注解</th><th>作用</th><th>示例</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@NotNull</code></td><td>不能为 null</td><td><code>@NotNull Long id</code></td></tr>
+      <tr><td><code>@NotEmpty</code></td><td>不能为空（集合/字符串）</td><td><code>@NotEmpty List&lt;?&gt; list</code></td></tr>
+      <tr><td><code>@NotBlank</code></td><td>不能为空且非纯空格</td><td><code>@NotBlank String name</code></td></tr>
+      <tr><td><code>@Email</code></td><td>邮箱格式</td><td><code>@Email String email</code></td></tr>
+      <tr><td><code>@Size(min, max)</code></td><td>长度</td><td><code>@Size(max=100) String name</code></td></tr>
+      <tr><td><code>@Min/@Max</code></td><td>数值范围</td><td><code>@Min(0) int age</code></td></tr>
+      <tr><td><code>@Pattern</code></td><td>正则</td><td><code>@Pattern(regexp = "^1\\d{10}$") String phone</code></td></tr>
+      <tr><td><code>@Past/@Future</code></td><td>过去/未来时间</td><td><code>@Past LocalDate birthday</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. DTO 上加注解</h2>
+  <pre><code class="language-java">public record CreateUserRequest(
+    @NotBlank(message = "用户名不能为空")
+    @Size(min = 3, max = 20, message = "用户名长度 3-20")
+    String username,
+
+    @NotBlank @Email(message = "邮箱格式错误")
+    String email,
+
+    @NotNull @Min(0) @Max(150)
+    Integer age,
+
+    @Size(max = 200)
+    String bio
+) {}</code></pre>
+
+  <h2>4. Controller 触发校验</h2>
+  <pre><code class="language-java">@PostMapping("/users")
+public ApiResponse&lt;User&gt; create(@RequestBody @Valid CreateUserRequest req) {
+  // @Valid 触发校验，失败抛 MethodArgumentNotValidException
+  return ApiResponse.success(userService.create(req));
+}
+
+@PutMapping("/users/{id}")
+public ApiResponse&lt;User&gt; update(
+    @PathVariable Long id,
+    @RequestBody @Valid UpdateUserRequest req
+) {
+  return ApiResponse.success(userService.update(id, req));
+}
+
+// 单个参数校验（@PathVariable / @RequestParam）
+@GetMapping("/users/{id}")
+public ApiResponse&lt;User&gt; get(
+    @PathVariable @Min(1) Long id  // 也要加 @Validated
+) { ... }</code></pre>
+
+  <p>对 <code>@PathVariable</code> 和 <code>@RequestParam</code> 校验，需要在类上加 <code>@Validated</code>。</p>
+
+  <h2>5. 统一处理校验失败</h2>
+  <pre><code class="language-java">@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ApiResponse&lt;Map&lt;String, String&gt;&gt; handleValidation(
+      MethodArgumentNotValidException e
+  ) {
+    Map&lt;String, String&gt; errors = new HashMap&lt;&gt;();
+    e.getBindingResult().getFieldErrors().forEach(fe -&gt;
+      errors.put(fe.getField(), fe.getDefaultMessage())
+    );
+    return ApiResponse.error(400, "参数校验失败").data(errors);
+    // {
+    //   "code": 400,
+    //   "message": "参数校验失败",
+    //   "data": { "email": "邮箱格式错误", "age": "必须大于等于 0" }
+    // }
+  }
+}</code></pre>
+
+  <h2>6. 分组校验</h2>
+  <p>不同场景用不同规则：</p>
+  <pre><code class="language-java">public interface CreateGroup {}
+public interface UpdateGroup {}
+
+public class UserDTO {
+  @Null(groups = CreateGroup.class, message = "创建时 id 必须为空")
+  @NotNull(groups = UpdateGroup.class, message = "更新时 id 不能为空")
+  private Long id;
+
+  @NotBlank(groups = {CreateGroup.class, UpdateGroup.class})
+  private String name;
+}
+
+// 使用
+@PostMapping
+public User create(@RequestBody @Validated(CreateGroup.class) UserDTO dto) { ... }
+
+@PutMapping
+public User update(@RequestBody @Validated(UpdateGroup.class) UserDTO dto) { ... }</code></pre>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>spring-boot-webapp</code>，POST 一个空 username，看返回
+    <br><br>
+    <strong>练习 2：</strong> 在 <code>CreateUserRequest</code> 加 <code>@Pattern</code> 校验密码强度
+    <br><br>
+    <strong>练习 3：</strong> 故意传错数据，验证全局异常处理返回字段级错误
+    <br><br>
+    <strong>练习 4：</strong> 实现一个自定义校验注解 <code>@Phone</code>（校验手机号）
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>前端校验和后端校验哪个更重要？</li>
+      <li>为什么 <code>@NotNull</code> 对 <code>Integer</code> 有效，对 <code>int</code> 无效？</li>
+      <li>校验失败应该返回字段级错误还是整体消息？</li>
+    </ol>
+  </div>
+
+  <p>校验掌握后，进入 <a href="L16-jpa/lesson.html">L16 JPA 入门</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L14-exception/lesson.html">← L14</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L16-jpa/lesson.html">L16 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

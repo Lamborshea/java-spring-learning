@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L06: Spring Boot 入门 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L06 / 22</span></span>
+  <a href="L07-ioc-di/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L06">
+  <h1><span class="course-tag">L06</span> Spring Boot 入门</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Spring Boot 核心</span>
+    <span>🎯 第一个项目</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">里程碑</div>
+    完成这节，你就有了一个真正能跑起来的 Web 后端。从 Java 基础正式进入 Spring Boot 阶段。
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解 Spring Boot 是什么、解决了什么问题</li>
+      <li>掌握标准项目结构</li>
+      <li>会用 <code>start.spring.io</code> 创建项目</li>
+      <li>跑通第一个 REST 接口</li>
+    </ul>
+  </div>
+
+  <h2>1. Spring Boot 是什么？</h2>
+  <p>Spring 是 Java 生态最老牌的应用框架，但早期 Spring 配置极其繁琐（大量 XML）。</p>
+  <p><strong>Spring Boot 的使命</strong>：让 Spring 变得"开箱即用"。</p>
+
+  <ul>
+    <li><strong>自动配置（Auto-Configuration）</strong>：根据 classpath 里的依赖，自动配好一切</li>
+    <li><strong>内嵌服务器</strong>：自带 Tomcat / Jetty，<code>java -jar</code> 直接跑</li>
+    <li><strong>Starter 依赖</strong>：一组相关依赖打包成 <code>spring-boot-starter-*</code></li>
+    <li><strong>约定优于配置</strong>：标准的目录结构、配置文件命名</li>
+  </ul>
+
+  <h2>2. 前端类比</h2>
+  <table>
+    <thead>
+      <tr><th>前端</th><th>Spring Boot</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>create-vue</code> / <code>create-react-app</code></td><td><a href="https://start.spring.io">start.spring.io</a></td></tr>
+      <tr><td><code>package.json</code></td><td><code>pom.xml</code></td></tr>
+      <tr><td><code>npm install</code></td><td>Maven 自动下载依赖</td></tr>
+      <tr><td><code>npm run dev</code></td><td><code>mvn spring-boot:run</code></td></tr>
+      <tr><td>Vercel / Netlify 部署</td><td>Docker 容器或 <code>java -jar</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. 创建项目</h2>
+  <p>方式一：去 <a href="https://start.spring.io">start.spring.io</a> 选依赖下载</p>
+  <p>方式二：IDEA → New Project → Spring Initializr</p>
+
+  <p>至少选这几个依赖：</p>
+  <ul>
+    <li><strong>Spring Web</strong>（包含 Tomcat + Spring MVC）</li>
+    <li><strong>Lombok</strong>（可选，简化 getter/setter）</li>
+  </ul>
+
+  <h2>4. 标准项目结构</h2>
+  <pre><code>L06-spring-boot-intro/
+├── pom.xml                       # Maven 配置
+├── src/
+│   ├── main/
+│   │   ├── java/
+│   │   │   └── com/learning/l06/
+│   │   │       ├── HelloSpringBootApplication.java   # 主类
+│   │   │       └── DemoController.java              # 控制器
+│   │   └── resources/
+│   │       └── application.yml     # 配置文件（可选）
+│   └── test/                      # 测试代码
+└── README.md</code></pre>
+
+  <h2>5. 关键注解</h2>
+  <pre><code class="language-java">@SpringBootApplication  // = @Configuration + @EnableAutoConfiguration + @ComponentScan
+@SpringBootApplication
+public class HelloSpringBootApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(HelloSpringBootApplication.class, args);
+    }
+}
+
+@RestController  // = @Controller + @ResponseBody，返回 JSON 而非页面
+@RequestMapping("/api/demo")
+public class DemoController {
+
+    @GetMapping("/hello")  // 处理 GET /api/demo/hello
+    public String hello() {
+        return "Hello, Spring Boot!";
+    }
+}</code></pre>
+
+  <table>
+    <thead>
+      <tr><th>注解</th><th>作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@SpringBootApplication</code></td><td>主类标记，启用自动配置</td></tr>
+      <tr><td><code>@RestController</code></td><td>REST 控制器，返回数据而非页面</td></tr>
+      <tr><td><code>@GetMapping</code></td><td>处理 GET 请求</td></tr>
+      <tr><td><code>@PostMapping</code></td><td>处理 POST 请求</td></tr>
+      <tr><td><code>@RequestMapping</code></td><td>通用路径映射</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. 启动流程（理解用）</h2>
+  <pre><code class="language-text">1. JVM 启动，执行 main()
+2. SpringApplication.run() 创建 Spring 上下文
+3. 扫描 @ComponentScan 范围内的组件
+4. 应用所有自动配置（@EnableAutoConfiguration）
+5. 启动内嵌 Tomcat
+6. 监听 8080 端口
+7. 应用就绪</code></pre>
+
+  <div class="callout tip">
+    <div class="callout-title">对比前端</div>
+    类似 <code>new Vue({...}).$mount('#app')</code>：
+    <ol>
+      <li>创建 Vue 实例</li>
+      <li>扫描 components、注册路由</li>
+      <li>应用全局配置</li>
+      <li>挂载到 DOM</li>
+      <li>应用就绪</li>
+    </ol>
+  </div>
+
+  <h2>7. 运行</h2>
+  <pre><code class="language-bash">cd L06-spring-boot-intro
+mvn spring-boot:run</code></pre>
+
+  <p>看到 <code>Started HelloSpringBootApplication in 2.5 seconds</code> 即成功。</p>
+  <p>浏览器访问：</p>
+  <ul>
+    <li><code>http://localhost:8080/hello</code></li>
+    <li><code>http://localhost:8080/info</code></li>
+    <li><code>http://localhost:8080/api/demo/greet?name=Lambor</code></li>
+  </ul>
+
+  <div class="callout warn">
+    <div class="callout-title">常见问题</div>
+    <p><strong>端口被占用</strong>：在 <code>application.yml</code> 改：</p>
+    <pre><code class="language-yaml">server:
+  port: 9090</code></pre>
+    <p><strong>改了代码没生效</strong>：默认 dev 工具不开启，要重启。L09 会讲热部署。</p>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑通 <code>L06</code>，访问 3 个接口
+    <br><br>
+    <strong>练习 2：</strong> 修改端口到 9090，重启验证
+    <br><br>
+    <strong>练习 3：</strong> 添加一个新的 <code>@GetMapping("/sum")</code>，接收两个 query 参数，返回它们的和
+    <br><br>
+    <strong>练习 4（可选）：</strong> 去 <a href="https://start.spring.io">start.spring.io</a> 创建一个自己的空项目
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>Spring Boot 的"自动配置"具体自动配了什么？列举 3 个例子</li>
+      <li>对比 <code>@Controller</code> 和 <code>@RestController</code> 的区别，什么时候用哪个？</li>
+      <li>为什么 Spring Boot 要"内嵌" Tomcat，而不是要求你单独装？</li>
+    </ol>
+  </div>
+
+  <p>你的第一个 Spring Boot 项目已就绪！进入 <a href="L07-ioc-di/lesson.html">L07 IoC 与 DI</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L05-functional/lesson.html">← L05</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L07-ioc-di/lesson.html">L07 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

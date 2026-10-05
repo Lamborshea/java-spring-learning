@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L20: 缓存 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L20 / 22</span></span>
+  <a href="L21-security/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L20">
+  <h1><span class="course-tag">L20</span> 缓存</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 进阶功能</span>
+    <span>🎯 @Cacheable + Redis</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">为什么要缓存？</div>
+    <p>数据库查询慢（10ms - 100ms），<strong>同一个查询 1000 次</strong>，第一次查 DB，后面查缓存。</p>
+    <p>读多写少的场景：用户主页、商品详情、文章内容。</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解缓存策略</li>
+      <li>会用 <code>@Cacheable</code>、<code>@CacheEvict</code></li>
+      <li>会用 Redis 做分布式缓存</li>
+    </ul>
+  </div>
+
+  <h2>1. Spring Cache 三大注解</h2>
+  <table>
+    <thead>
+      <tr><th>注解</th><th>作用</th><th>类比</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@Cacheable</code></td><td>查询时缓存</td><td>memoize</td></tr>
+      <tr><td><code>@CachePut</code></td><td>更新时刷新缓存</td><td>cache.set</td></tr>
+      <tr><td><code>@CacheEvict</code></td><td>删除缓存</td><td>cache.delete</td></tr>
+    </tbody>
+  </table>
+
+  <h2>2. 启用 + 配 Redis</h2>
+  <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-data-redis&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-cache&lt;/artifactId&gt;
+&lt;/dependency&gt;</code></pre>
+
+  <pre><code class="language-yaml">spring:
+  redis:
+    host: localhost
+    port: 6379
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000  # 10 分钟</code></pre>
+
+  <pre><code class="language-java">@SpringBootApplication
+@EnableCaching  // 启用缓存
+public class App { ... }</code></pre>
+
+  <h2>3. <code>@Cacheable</code> 用法</h2>
+  <pre><code class="language-java">@Service
+public class UserService {
+
+  @Cacheable(value = "user", key = "#id")
+  public User findById(Long id) {
+    // 第一次调用执行，后续命中缓存
+    log.info("从数据库查 user {}", id);
+    return userRepository.findById(id).orElse(null);
+  }
+
+  @Cacheable(value = "user", key = "#username", unless = "#result == null")
+  public User findByUsername(String username) {
+    return userRepository.findByUsername(username);
+  }
+}</code></pre>
+
+  <div class="callout tip">
+    <div class="callout-title">key 的写法</div>
+    <ul>
+      <li><code>#id</code> - 参数 id</li>
+      <li><code>#username</code> - 参数 username</li>
+      <li><code>#user.id</code> - 参数对象的字段</li>
+      <li><code>#root.methodName</code> - 方法名</li>
+      <li><code>#root.target</code> - 目标对象</li>
+    </ul>
+  </div>
+
+  <h2>4. <code>@CacheEvict</code> 删除缓存</h2>
+  <pre><code class="language-java">@Service
+public class UserService {
+
+  @CacheEvict(value = "user", key = "#id")
+  public void deleteById(Long id) {
+    userRepository.deleteById(id);
+  }
+
+  // 清空整个 user 缓存
+  @CacheEvict(value = "user", allEntries = true)
+  public void deleteAll() {
+    userRepository.deleteAll();
+  }
+
+  // 更新后清缓存
+  @CachePut(value = "user", key = "#user.id")
+  public User update(User user) {
+    return userRepository.save(user);
+  }
+}</code></pre>
+
+  <h2>5. 缓存策略</h2>
+  <pre><code class="language-text">请求 → 查缓存（命中返回）
+        ↓ 未命中
+       查 DB
+        ↓
+      写入缓存
+        ↓
+      返回结果</code></pre>
+
+  <h2>6. 缓存问题</h2>
+  <table>
+    <thead>
+      <tr><th>问题</th><th>说明</th><th>解决</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>缓存穿透</td><td>查不存在的 key，每次都打 DB</td><td>空值也缓存</td></tr>
+      <tr><td>缓存击穿</td><td>热点 key 过期，瞬间大量请求</td><td>分布式锁、不过期</td></tr>
+      <tr><td>缓存雪崩</td><td>大量 key 同时过期</td><td>过期时间加随机</td></tr>
+    </tbody>
+  </table>
+
+  <h2>7. 实战代码</h2>
+  <pre><code class="language-java">@Service
+@RequiredArgsConstructor
+public class ArticleService {
+  private final ArticleRepository articleRepository;
+
+  @Cacheable(value = "article", key = "#id", unless = "#result == null")
+  public Article getById(Long id) {
+    log.info("DB query: article {}", id);
+    return articleRepository.findById(id).orElse(null);
+  }
+
+  @CachePut(value = "article", key = "#article.id")
+  public Article update(Article article) {
+    return articleRepository.save(article);
+  }
+
+  @CacheEvict(value = "article", key = "#id")
+  public void delete(Long id) {
+    articleRepository.deleteById(id);
+  }
+}</code></pre>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>L20</code>，看 <code>CacheDemoApplication</code> 演示
+    <br><br>
+    <strong>练习 2：</strong> 给 <code>ArticleService</code> 加 <code>@Cacheable</code>，验证第一次慢、第二次快
+    <br><br>
+    <strong>练习 3：</strong> 故意查询不存在的 id，看是否走 DB
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>本地缓存（Caffeine）和分布式缓存（Redis）怎么选？</li>
+      <li>什么数据<strong>不该</strong>缓存？</li>
+      <li>缓存和数据库一致性怎么保证？</li>
+    </ol>
+  </div>
+
+  <p>缓存掌握后，进入 <a href="L21-security/lesson.html">L21 安全</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L19-async/lesson.html">← L19</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L21-security/lesson.html">L21 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L21: 安全 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L21 / 22</span></span>
+  <a href="L22-api-docs/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L21">
+  <h1><span class="course-tag">L21</span> 安全（Spring Security + JWT）</h1>
+  <div class="meta">
+    <span>⏱ 3 小时</span>
+    <span>📦 进阶功能</span>
+    <span>🎯 鉴权 + 授权</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">认证 vs 授权</div>
+    <ul>
+      <li><strong>认证（Authentication）</strong>：你是谁？登录验证</li>
+      <li><strong>授权（Authorization）</strong>：你能做什么？权限检查</li>
+    </ul>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解 Spring Security 过滤器链</li>
+      <li>会用 JWT 做无状态认证</li>
+      <li>会用 BCrypt 加密密码</li>
+    </ul>
+  </div>
+
+  <h2>1. JWT 结构</h2>
+  <pre><code class="language-text">eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.
+eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIn0.
+SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c
+
+┌──────────────┬──────────────┬──────────────┐
+│   Header     │   Payload    │  Signature   │
+│  算法+类型    │  用户信息     │  签名验证     │
+└──────────────┴──────────────┴──────────────┘</code></pre>
+
+  <h2>2. 认证流程</h2>
+  <pre><code class="language-text">客户端                后端                  数据库
+  │                    │                      │
+  │  POST /login      │                      │
+  │ {user, pass}      │                      │
+  │──────────────────&gt;│                      │
+  │                    │ 查 user              │
+  │                    │─────────────────────&gt;│
+  │                    │&lt;─────────────────────│
+  │                    │ 校验密码（BCrypt）    │
+  │                    │ 生成 JWT             │
+  │  {token: "..."}   │                      │
+  │&lt;──────────────────│                      │
+  │                    │                      │
+  │  GET /api/users   │                      │
+  │  Authorization: Bearer xxx                  │
+  │──────────────────&gt;│                      │
+  │                    │ 解析 JWT              │
+  │                    │ 验证签名              │
+  │                    │ 设置安全上下文        │
+  │  200 OK           │                      │
+  │&lt;──────────────────│</code></pre>
+
+  <h2>3. 引入依赖</h2>
+  <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-security&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;io.jsonwebtoken&lt;/groupId&gt;
+  &lt;artifactId&gt;jjwt-api&lt;/artifactId&gt;
+  &lt;version&gt;0.12.5&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+
+  <h2>4. SecurityFilterChain 配置</h2>
+  <pre><code class="language-java">@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    return http
+      .csrf(csrf -&gt; csrf.disable())
+      .sessionManagement(s -&gt; s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+      .authorizeHttpRequests(auth -&gt; auth
+          .requestMatchers("/api/auth/**").permitAll()  // 登录注册放行
+          .requestMatchers("/api/admin/**").hasRole("ADMIN")
+          .anyRequest().authenticated()
+      )
+      .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
+      .build();
+  }
+
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder();
+  }
+}</code></pre>
+
+  <h2>5. JWT 工具类</h2>
+  <pre><code class="language-java">@Service
+public class JwtService {
+
+  private final SecretKey key = Keys.hmacShaKeyFor("your-256-bit-secret-key-here!!".getBytes());
+
+  public String generate(Long userId, String username) {
+    return Jwts.builder()
+        .subject(username)
+        .claim("uid", userId)
+        .issuedAt(new Date())
+        .expiration(new Date(System.currentTimeMillis() + 86400000))  // 1 天
+        .signWith(key)
+        .compact();
+  }
+
+  public Claims parse(String token) {
+    return Jwts.parser()
+        .verifyWith(key)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload();
+  }
+}</code></pre>
+
+  <h2>6. JWT 过滤器</h2>
+  <pre><code class="language-java">@Component
+public class JwtFilter extends OncePerRequestFilter {
+
+  @Autowired private JwtService jwtService;
+  @Autowired private UserDetailsService userDetailsService;
+
+  @Override
+  protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) {
+    String header = req.getHeader("Authorization");
+    if (header != null &amp;&amp; header.startsWith("Bearer ")) {
+      String token = header.substring(7);
+      try {
+        Claims claims = jwtService.parse(token);
+        String username = claims.getSubject();
+        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        UsernamePasswordAuthenticationToken auth =
+            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+        SecurityContextHolder.getContext().setAuthentication(auth);
+      } catch (Exception e) {
+        // token 无效
+      }
+    }
+    chain.doFilter(req, res);
+  }
+}</code></pre>
+
+  <h2>7. 登录接口</h2>
+  <pre><code class="language-java">@RestController
+@RequestMapping("/api/auth")
+public class AuthController {
+
+  @Autowired private UserRepository userRepo;
+  @Autowired private PasswordEncoder passwordEncoder;
+  @Autowired private JwtService jwtService;
+
+  @PostMapping("/register")
+  public ApiResponse&lt;User&gt; register(@RequestBody RegisterRequest req) {
+    User user = new User();
+    user.setUsername(req.username());
+    user.setPassword(passwordEncoder.encode(req.password()));  // 加密
+    return ApiResponse.success(userRepo.save(user));
+  }
+
+  @PostMapping("/login")
+  public ApiResponse&lt;Map&gt; login(@RequestBody LoginRequest req) {
+    User user = userRepo.findByUsername(req.username())
+        .orElseThrow(() -&gt; new BusinessException(401, "用户不存在"));
+    if (!passwordEncoder.matches(req.password(), user.getPassword())) {
+      throw new BusinessException(401, "密码错误");
+    }
+    String token = jwtService.generate(user.getId(), user.getUsername());
+    return ApiResponse.success(Map.of("token", token));
+  }
+}</code></pre>
+
+  <div class="callout warn">
+    <div class="callout-title">⚠️ 安全要点</div>
+    <ul>
+      <li>密码必须 <code>BCrypt</code> 加密，<strong>绝不</strong>明文存储</li>
+      <li>JWT secret 必须足够长（≥256 bit）且保密</li>
+      <li>HTTPS 传输（生产）</li>
+      <li>Token 过期时间不宜过长</li>
+      <li>refresh token 用于延长会话（进阶）</li>
+    </ul>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>L21</code>，看 <code>SecurityDemoApplication</code> 演示
+    <br><br>
+    <strong>练习 2：</strong> 实现一个"修改密码"接口：先校验旧密码，再改新密码
+    <br><br>
+    <strong>练习 3：</strong> 加一个角色判断：只有 <code>ADMIN</code> 能访问 <code>/api/admin/**</code>
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>JWT 和 Session 认证各有什么优缺点？</li>
+      <li>JWT 不能主动失效，怎么解决登出？</li>
+      <li>密码哈希除了 BCrypt，还有什么？</li>
+    </ol>
+  </div>
+
+  <p>安全基础后，进入 <a href="L22-api-docs/lesson.html">L22 API 文档</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L20-cache/lesson.html">← L20</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L22-api-docs/lesson.html">L22 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

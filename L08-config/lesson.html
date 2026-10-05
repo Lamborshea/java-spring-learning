@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L08: 配置管理 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L08 / 22</span></span>
+  <a href="L09-logging/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L08">
+  <h1><span class="course-tag">L08</span> 配置管理</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Spring Boot 核心</span>
+    <span>🎯 application.yml</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 <code>application.yml</code> 语法</li>
+      <li>理解多环境配置（dev / prod）</li>
+      <li>会用 <code>@Value</code> 和 <code>@ConfigurationProperties</code></li>
+    </ul>
+  </div>
+
+  <h2>1. 配置文件</h2>
+  <p>Spring Boot 用 <code>application.yml</code>（或 <code>.properties</code>）做配置。<strong>YAML 比 properties 更可读</strong>。</p>
+  <pre><code class="language-yaml"># application.yml
+server:
+  port: 8080
+  servlet:
+    context-path: /api   # 所有接口前缀
+
+spring:
+  application:
+    name: my-app
+  datasource:
+    url: jdbc:mysql://localhost:3306/test
+    username: root
+    password: 123456
+
+app:
+  name: My Spring Boot App
+  version: 1.0.0
+  feature:
+    cache: true
+    debug: false</code></pre>
+
+  <h2>2. <code>@Value</code> 单值注入</h2>
+  <pre><code class="language-java">@Service
+public class AppInfo {
+
+  @Value("${app.name}")
+  private String appName;
+
+  @Value("${app.version:1.0.0}")  // 默认值
+  private String version;
+
+  @Value("${app.feature.cache}")
+  private boolean cacheEnabled;
+}</code></pre>
+
+  <h2>3. <code>@ConfigurationProperties</code> 批量注入</h2>
+  <pre><code class="language-java">@Configuration
+@ConfigurationProperties(prefix = "app")
+@Data  // Lombok 自动生成 getter/setter
+public class AppProperties {
+  private String name;
+  private String version;
+  private Map&lt;String, Boolean&gt; feature;
+}</code></pre>
+
+  <p>或者用 <code>@ConfigurationProperties</code> + 构造方法（推荐）：</p>
+  <pre><code class="language-java">@ConfigurationProperties(prefix = "app")
+public record AppProperties(
+    String name,
+    String version,
+    Map&lt;String, Boolean&gt; feature
+) {}
+
+// 使用
+@Service
+@RequiredArgsConstructor
+public class AppInfo {
+  private final AppProperties props;
+
+  public void print() {
+    System.out.println(props.name());  // "My Spring Boot App"
+  }
+}</code></pre>
+
+  <h2>4. 多环境配置</h2>
+  <pre><code class="language-text">src/main/resources/
+├── application.yml          # 默认配置（所有环境共享）
+├── application-dev.yml      # 开发环境
+├── application-test.yml     # 测试环境
+└── application-prod.yml     # 生产环境</code></pre>
+
+  <pre><code class="language-yaml"># application-dev.yml
+server:
+  port: 8080
+spring:
+  datasource:
+    url: jdbc:h2:mem:devdb
+logging:
+  level:
+    com.learning: DEBUG
+
+---
+# application-prod.yml
+server:
+  port: 80
+spring:
+  datasource:
+    url: jdbc:mysql://prod-host:3306/proddb
+logging:
+  level:
+    com.learning: INFO</code></pre>
+
+  <p><strong>激活方式</strong>：</p>
+  <pre><code class="language-bash"># 命令行
+java -jar app.jar --spring.profiles.active=prod
+
+# 环境变量
+SPRING_PROFILES_ACTIVE=prod java -jar app.jar
+
+# IDE：在 Run Configuration → Active profiles 填 dev</code></pre>
+
+  <h2>5. 配置加载顺序（优先级从高到低）</h2>
+  <ol>
+    <li>命令行参数 <code>--server.port=9090</code></li>
+    <li>环境变量 <code>SERVER_PORT=9090</code></li>
+    <li><code>application-{profile}.yml</code></li>
+    <li><code>application.yml</code></li>
+    <li>代码默认值</li>
+  </ol>
+
+  <div class="callout tip">
+    <div class="callout-title">生产建议</div>
+    敏感信息（密码、密钥）放环境变量或 <code>application-prod.yml</code>（不入 Git），而不是硬编码。
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 打开 <code>L08-config/src/main/resources/application.yml</code> 看配置
+    <br><br>
+    <strong>练习 2：</strong> 添加一个 <code>app.welcome=Hello Lambor</code>，用 <code>@Value</code> 注入
+    <br><br>
+    <strong>练习 3：</strong> 改端口为 9090 启动，验证是否生效
+    <br><br>
+    <strong>练习 4：</strong> 创建 <code>application-dev.yml</code> 和 <code>application-prod.yml</code>，切换看效果
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么推荐 YAML 而不是 properties？</li>
+      <li><code>@Value</code> 和 <code>@ConfigurationProperties</code> 怎么选？</li>
+      <li>生产环境的数据库密码该怎么管理？</li>
+    </ol>
+  </div>
+
+  <p>配置掌握后，进入 <a href="L09-logging/lesson.html">L09 日志</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L07-ioc-di/lesson.html">← L07</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L09-logging/lesson.html">L09 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

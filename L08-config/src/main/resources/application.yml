@@ -1,0 +1,27 @@
+# L08 配置管理示例配置
+
+# 应用配置
+app:
+  name: learning-app
+  version: 1.0.0
+  author: Java Learner
+  description: "这是一个学习项目"
+
+# 服务器配置
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# 日志配置
+logging:
+  level:
+    com.learning.l08: DEBUG
+
+# 自定义配置
+custom:
+  timeout: 30
+  retry: 3
+  features:
+    enable-cache: true
+    enable-security: false

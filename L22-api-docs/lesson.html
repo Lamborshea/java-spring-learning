@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L22: API 文档 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L22 / 22</span></span>
+  <a href="../INDEX.html">课程总结 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L22">
+  <h1><span class="course-tag">L22</span> API 文档自动生成</h1>
+  <div class="meta">
+    <span>⏱ 1 小时</span>
+    <span>📦 进阶功能</span>
+    <span>🎯 SpringDoc + Knife4j</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">为什么需要自动文档？</div>
+    <p>手写 API 文档 → 接口改了就忘了改文档 → 文档过时 → 没人信。<br>
+    <strong>自动文档</strong>：注解即文档，代码改文档自动更新。</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>会用 SpringDoc / OpenAPI 3</li>
+      <li>会用 Knife4j 增强 UI</li>
+      <li>理解 API 版本管理</li>
+    </ul>
+  </div>
+
+  <h2>1. 引入依赖</h2>
+  <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springdoc&lt;/groupId&gt;
+  &lt;artifactId&gt;springdoc-openapi-starter-webmvc-ui&lt;/artifactId&gt;
+  &lt;version&gt;2.5.0&lt;/version&gt;
+&lt;/dependency&gt;
+&lt;!-- 国内推荐用 Knife4j --&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;com.github.xiaoymin&lt;/groupId&gt;
+  &lt;artifactId&gt;knife4j-openapi3-jakarta-spring-boot-starter&lt;/artifactId&gt;
+  &lt;version&gt;4.5.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
+
+  <h2>2. 基础配置</h2>
+  <pre><code class="language-java">@Configuration
+public class OpenApiConfig {
+
+  @Bean
+  public OpenAPI customOpenAPI() {
+    return new OpenAPI()
+      .info(new Info()
+        .title("任务管理 API")
+        .version("1.0.0")
+        .description("任务管理系统的 RESTful API 文档")
+        .contact(new Contact().name("Lambor").email("lambor@example.com"))
+      )
+      .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
+      .components(new Components()
+        .addSecuritySchemes("bearerAuth",
+          new SecurityScheme()
+            .type(SecurityScheme.Type.HTTP)
+            .scheme("bearer")
+            .bearerFormat("JWT")
+        )
+      );
+  }
+}</code></pre>
+
+  <h2>3. Controller 注解</h2>
+  <pre><code class="language-java">@RestController
+@RequestMapping("/api/users")
+@Tag(name = "用户管理", description = "用户的 CRUD 接口")
+public class UserController {
+
+  @Operation(summary = "获取用户列表", description = "分页查询用户")
+  @GetMapping
+  public ApiResponse&lt;Page&lt;User&gt;&gt; list(
+      @Parameter(description = "页码", example = "0")
+      @RequestParam(defaultValue = "0") int page,
+
+      @Parameter(description = "每页大小", example = "10")
+      @RequestParam(defaultValue = "10") int size
+  ) {
+    return ApiResponse.success(userService.findPage(page, size));
+  }
+
+  @Operation(summary = "创建用户")
+  @ApiResponses({
+    @ApiResponse(responseCode = "201", description = "创建成功"),
+    @ApiResponse(responseCode = "400", description = "参数错误")
+  })
+  @PostMapping
+  public ApiResponse&lt;User&gt; create(
+      @RequestBody @Valid CreateUserRequest req
+  ) {
+    return ApiResponse.success(userService.create(req));
+  }
+}</code></pre>
+
+  <h2>4. DTO 注解</h2>
+  <pre><code class="language-java">@Schema(description = "创建用户请求")
+public record CreateUserRequest(
+    @Schema(description = "用户名", example = "lambor", requiredMode = RequiredMode.REQUIRED)
+    @NotBlank String username,
+
+    @Schema(description = "邮箱", example = "lambor@example.com")
+    @Email String email,
+
+    @Schema(description = "年龄", example = "25")
+    @Min(0) Integer age
+) {}</code></pre>
+
+  <h2>5. 访问地址</h2>
+  <table>
+    <thead>
+      <tr><th>工具</th><th>URL</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Swagger UI（官方）</td><td><code>http://localhost:8080/swagger-ui.html</code></td></tr>
+      <tr><td>OpenAPI JSON</td><td><code>http://localhost:8080/v3/api-docs</code></td></tr>
+      <tr><td>Knife4j（推荐）</td><td><code>http://localhost:8080/doc.html</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. API 版本管理</h2>
+  <pre><code class="language-text">方式 1：URL 路径版本
+  /api/v1/users
+  /api/v2/users
+
+方式 2：请求头版本
+  Accept: application/vnd.myapi.v2+json
+
+方式 3：参数版本
+  /api/users?version=2</code></pre>
+
+  <p><strong>推荐方式 1</strong>（最直观）：</p>
+  <pre><code class="language-java">@RestController
+@RequestMapping("/api/v1/users")
+public class UserControllerV1 { ... }
+
+@RestController
+@RequestMapping("/api/v2/users")
+public class UserControllerV2 { ... }</code></pre>
+
+  <h2>7. 生产实践</h2>
+  <div class="callout tip">
+    <div class="callout-title">建议</div>
+    <ul>
+      <li>所有 Controller 和 DTO 都加 <code>@Tag</code> / <code>@Schema</code></li>
+      <li>用 <code>@ExampleObject</code> 提供示例</li>
+      <li>生产环境可以关闭 / 限制访问 Swagger UI</li>
+      <li>用 Knife4j 可以有更好的 UI 和调试体验</li>
+    </ul>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 在 <code>spring-boot-webapp</code> 加 <code>springdoc-openapi</code> 依赖，启动访问 <code>/swagger-ui.html</code>
+    <br><br>
+    <strong>练习 2：</strong> 给 <code>UserController</code> 加 <code>@Tag</code>、<code>@Operation</code> 注解
+    <br><br>
+    <strong>练习 3：</strong> 给 DTO 加 <code>@Schema</code>，看文档中的字段说明变化
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>自动文档 vs 手写文档，你倾向哪种？为什么？</li>
+      <li>API 版本管理的必要性？没有会出什么问题？</li>
+    </ol>
+  </div>
+
+  <h2>🎉 课程总结</h2>
+  <p>完成 24 节课，你已经掌握了：</p>
+  <ul>
+    <li>✅ Java 核心语法和 OOP</li>
+    <li>✅ 集合、泛型、Lambda、Stream</li>
+    <li>✅ Spring Boot 核心（IoC、配置、日志、测试）</li>
+    <li>✅ Web 开发（REST、参数、响应、异常、校验）</li>
+    <li>✅ 数据访问（JPA、关系映射、事务、数据库设计）</li>
+    <li>✅ 进阶（异步、缓存、安全、文档）</li>
+  </ul>
+
+  <p>接下来建议：</p>
+  <ol>
+    <li>做一个综合项目（任务管理系统）</li>
+    <li>补充 Docker 部署知识</li>
+    <li>进阶：Spring Cloud 微服务</li>
+  </ol>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L21-security/lesson.html">← L21</a>
+  <a href="../INDEX.html">课程总览</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L02: 基础语法与数据类型 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L02 / 22</span></span>
+  <a href="L03-oop/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L02">
+  <h1><span class="course-tag">L02</span> 基础语法与数据类型</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 Java 基础</span>
+    <span>🎯 语法入门</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 Java 基本数据类型（8 个）</li>
+      <li>理解 <code>final</code> 常量</li>
+      <li>学会运算符和控制流</li>
+      <li>区分 <code>==</code> 和 <code>.equals()</code></li>
+    </ul>
+  </div>
+
+  <h2>1. 基本数据类型（Primitive Types）</h2>
+  <p>Java 有 8 个基本类型，<strong>不是对象</strong>，存的是值本身。</p>
+
+  <table>
+    <thead>
+      <tr><th>分类</th><th>类型</th><th>大小</th><th>JS 对比</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>整数</td><td><code>byte</code></td><td>1 字节</td><td>无对应</td></tr>
+      <tr><td>整数</td><td><code>short</code></td><td>2 字节</td><td>无对应</td></tr>
+      <tr><td>整数</td><td><code>int</code></td><td>4 字节</td><td>number</td></tr>
+      <tr><td>整数</td><td><code>long</code></td><td>8 字节</td><td>BigInt</td></tr>
+      <tr><td>浮点</td><td><code>float</code></td><td>4 字节</td><td>number</td></tr>
+      <tr><td>浮点</td><td><code>double</code></td><td>8 字节</td><td>number</td></tr>
+      <tr><td>字符</td><td><code>char</code></td><td>2 字节</td><td>无单字符类型</td></tr>
+      <tr><td>布尔</td><td><code>boolean</code></td><td>1 位</td><td>boolean</td></tr>
+    </tbody>
+  </table>
+
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// 只有 number 和 bigint
+let a = 1;
+let b = 3.14;
+let big = 12345678901234567890n;
+
+// 弱类型可以混
+let x = 1;
+x = "hello";  // OK</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// 必须明确类型
+int a = 1;          // 默认整数
+double b = 3.14;    // 默认浮点
+long big = 123456789012345L;  // 末尾 L
+float f = 3.14f;    // 末尾 f
+char c = 'A';       // 单引号
+boolean flag = true;
+
+// 强类型
+int x = 1;
+// x = "hello";  // 编译错误！</code></pre>
+    </div>
+  </div>
+
+  <h2>2. 变量与常量</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// 三种声明方式
+var old = "过时";
+let count = 10;       // 块级
+const PI = 3.14;      // 常量
+
+// const 是引用不可变
+const obj = {};
+obj.name = "ok";  // 可以！
+obj = {};  // 错误！</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// 变量
+int age = 25;
+String name = "John";
+
+// 常量：final 修饰
+final double PI = 3.14159;
+// PI = 3.14;  // 编译错误！
+
+// 命名规范：全大写下划线
+final int MAX_COUNT = 100;
+final String DEFAULT_NAME = "Guest";</code></pre>
+    </div>
+  </div>
+
+  <h2>3. 字符串</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>const name = "John";
+
+// 模板字符串（最方便）
+const msg = `Hello, ${name}!`;
+
+// 常用方法
+name.toUpperCase();   // "JOHN"
+name.includes("o");   // true
+name.substring(0, 2); // "Jo"</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>String name = "John";
+
+// 只能拼接
+String msg = "Hello, " + name + "!";
+
+// 格式化
+String msg2 = String.format("Hello, %s!", name);
+
+// 常用方法
+name.toUpperCase();    // "JOHN"
+name.contains("o");    // true
+name.substring(0, 2);  // "Jo"
+
+// JDK 15+ 文本块
+String sql = """
+    SELECT * FROM users
+    WHERE id = 1
+    """;</code></pre>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <div class="callout-title">⚠️ String 不可变</div>
+    <p>Java 的 <code>String</code> 是<strong>不可变对象</strong>，每次"修改"其实创建了新对象。大量拼接用 <code>StringBuilder</code>：</p>
+    <pre><code class="language-java">// ❌ 慢
+String s = "";
+for (int i = 0; i < 1000; i++) {
+    s = s + i;
+}
+
+// ✅ 快
+StringBuilder sb = new StringBuilder();
+for (int i = 0; i < 1000; i++) {
+    sb.append(i);
+}
+String s = sb.toString();</code></pre>
+  </div>
+
+  <h2>4. <code>==</code> vs <code>.equals()</code></h2>
+  <p><strong>这是 Java 面试必考题，也是新手最容易踩的坑。</strong></p>
+
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// == 触发类型转换
+1 == "1"        // true ⚠️
+
+// === 严格比较
+1 === "1"       // false
+[1] === [1]     // false（引用不同）
+
+// 对象的相等判断
+JSON.stringify(a) === JSON.stringify(b)</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// == 对基本类型比较值
+int a = 1;
+int b = 1;
+a == b;  // true
+
+// == 对对象比较引用地址！
+String s1 = new String("hi");
+String s2 = new String("hi");
+s1 == s2;        // false（不同对象）
+
+// ✅ 比较内容用 .equals()
+s1.equals(s2);   // true</code></pre>
+    </div>
+  </div>
+
+  <h2>5. 运算符</h2>
+  <table>
+    <thead>
+      <tr><th>类型</th><th>运算符</th><th>注意</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>算术</td><td><code>+ - * / %</code></td><td>整数除法会截断：<code>10 / 3 = 3</code></td></tr>
+      <tr><td>比较</td><td><code>== != > < >= <=</code></td><td>对象用 <code>.equals()</code></td></tr>
+      <tr><td>逻辑</td><td><code>&& || !</code></td><td>不能用 <code>& |</code>（位运算另说）</td></tr>
+      <tr><td>三元</td><td><code>条件 ? 值1 : 值2</code></td><td>同 JS</td></tr>
+      <tr><td>自增</td><td><code>++ --</code></td><td>前置先加后用，后置先用后加</td></tr>
+    </tbody>
+  </table>
+
+  <h2>6. 控制流</h2>
+  <pre><code class="language-java">// if-else 同 JS
+if (age >= 18) {
+    System.out.println("成年");
+} else if (age >= 12) {
+    System.out.println("青少年");
+} else {
+    System.out.println("儿童");
+}
+
+// switch 表达式（Java 14+，推荐）
+String day = "MONDAY";
+String type = switch (day) {
+    case "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY" -> "工作日";
+    case "SATURDAY", "SUNDAY" -> "周末";
+    default -> "无效";
+};
+
+// for 循环
+for (int i = 0; i < 10; i++) {
+    System.out.println(i);
+}
+
+// 增强 for（类似 for...of）
+String[] names = {"Alice", "Bob", "Charlie"};
+for (String name : names) {
+    System.out.println(name);
+}</code></pre>
+
+  <h2>7. 类型转换</h2>
+  <pre><code class="language-java">// 自动转：小 → 大
+byte b = 10;
+int i = b;       // byte → int OK
+double d = i;    // int → double OK
+
+// 强制转：大 → 小（可能丢精度）
+double d = 3.14;
+int i = (int) d;  // 3，丢小数
+
+// 字符串 ↔ 数字
+String s = "123";
+int n = Integer.parseInt(s);   // 字符串 → int
+String back = String.valueOf(n); // int → 字符串</code></pre>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L02-basic-syntax</code>，看每个示例的输出
+    <br><br>
+    <strong>练习 2：</strong> 自己写一段代码：定义 3 个不同类型的变量，演示自动转换和强制转换
+    <br><br>
+    <strong>练习 3：</strong> 用增强 for 遍历一个 String 数组，输出所有长度 > 3 的字符串
+    <br><br>
+    <strong>练习 4（踩坑预警）：</strong> 写两个 String，用 <code>==</code> 和 <code>.equals()</code> 各比较一次，看输出
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么 Java 要区分 <code>==</code> 和 <code>.equals()</code>？JS 为什么不区分？</li>
+      <li>Java 的 <code>final</code> 和 JS 的 <code>const</code> 行为完全一样吗？举例说明差异</li>
+      <li>为什么 Java 的 String 是不可变的？这样设计有什么好处？</li>
+    </ol>
+  </div>
+
+  <p>掌握基础语法后，进入 <a href="L03-oop/lesson.html">L03 面向对象编程</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L01-environment/lesson.html">← L01</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L03-oop/lesson.html">L03 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

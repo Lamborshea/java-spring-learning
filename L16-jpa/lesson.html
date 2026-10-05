@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L16: Spring Data JPA 入门 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L16 / 22</span></span>
+  <a href="L17-mapping/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L16">
+  <h1><span class="course-tag">L16</span> Spring Data JPA 入门</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 数据访问</span>
+    <span>🎯 ORM + Repository</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">JPA 是什么？</div>
+    <p><strong>JPA</strong> = Java Persistence API，是 Java 的 ORM 规范。<br>
+    <strong>Hibernate</strong> 是 JPA 最流行的实现。<br>
+    <strong>Spring Data JPA</strong> 是 Spring 对 JPA 的封装，让数据库操作更简单。</p>
+    <p>类比：JPA 像 TypeScript 类型系统，Hibernate 像编译器，Spring Data JPA 像 VS Code 给你自动补全。</p>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>理解 JPA / Hibernate / Spring Data JPA 关系</li>
+      <li>会用 <code>@Entity</code> 定义实体</li>
+      <li>会用 <code>JpaRepository</code> 做 CRUD</li>
+      <li>会用方法名派生查询</li>
+    </ul>
+  </div>
+
+  <h2>1. 引入依赖 + 配置</h2>
+  <pre><code class="language-xml">&lt;dependency&gt;
+  &lt;groupId&gt;org.springframework.boot&lt;/groupId&gt;
+  &lt;artifactId&gt;spring-boot-starter-data-jpa&lt;/artifactId&gt;
+&lt;/dependency&gt;
+&lt;dependency&gt;
+  &lt;groupId&gt;com.h2database&lt;/groupId&gt;
+  &lt;artifactId&gt;h2&lt;/artifactId&gt;
+  &lt;scope&gt;runtime&lt;/scope&gt;
+&lt;/dependency&gt;</code></pre>
+
+  <pre><code class="language-yaml">spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop   # 启动建表，关闭时删
+    show-sql: true            # 打印 SQL</code></pre>
+
+  <h2>2. 定义 Entity</h2>
+  <pre><code class="language-java">@Entity                    // 标记为 JPA 实体
+@Table(name = "users")     // 对应表名（默认是类名）
+@Data
+@NoArgsConstructor
+public class User {
+  @Id                       // 主键
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
+
+  @Column(nullable = false, unique = true, length = 50)
+  private String username;
+
+  @Column(nullable = false)
+  private String email;
+
+  private Integer age;
+
+  @CreationTimestamp        // 创建时自动填充
+  private LocalDateTime createdAt;
+
+  @UpdateTimestamp          // 更新时自动填充
+  private LocalDateTime updatedAt;
+}</code></pre>
+
+  <table>
+    <thead>
+      <tr><th>注解</th><th>作用</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>@Entity</code></td><td>标记实体类</td></tr>
+      <tr><td><code>@Table</code></td><td>指定表名</td></tr>
+      <tr><td><code>@Id</code></td><td>主键</td></tr>
+      <tr><td><code>@GeneratedValue</code></td><td>主键生成策略</td></tr>
+      <tr><td><code>@Column</code></td><td>字段约束</td></tr>
+      <tr><td><code>@CreationTimestamp</code></td><td>创建时间自动填充</td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. Repository 接口</h2>
+  <pre><code class="language-java">public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+  // 啥都不写，已经有 20+ 个方法了
+}</code></pre>
+
+  <p><strong>继承的层次</strong>：</p>
+  <pre><code>Repository
+  └── CrudRepository           # save, findById, findAll, delete, count
+      └── PagingAndSortingRepository  # + 分页和排序
+          └── JpaRepository   # + 批量操作、刷新等</code></pre>
+
+  <p>开箱即用的方法：</p>
+  <pre><code class="language-java">userRepository.save(user);                // 插入或更新
+userRepository.saveAll(list);
+userRepository.findById(1L);              // Optional&lt;User&gt;
+userRepository.findAll();                 // List&lt;User&gt;
+userRepository.findAll(PageRequest.of(0, 10));  // 分页
+userRepository.existsById(1L);
+userRepository.count();
+userRepository.deleteById(1L);
+userRepository.delete(user);</code></pre>
+
+  <h2>4. 方法名派生查询（黑魔法）</h2>
+  <p>Spring Data JPA 能从方法名自动生成 SQL：</p>
+  <pre><code class="language-java">public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+  // WHERE username = ?
+  Optional&lt;User&gt; findByUsername(String username);
+
+  // WHERE age &gt; ?
+  List&lt;User&gt; findByAgeGreaterThan(Integer age);
+
+  // WHERE name LIKE '%?%'
+  List&lt;User&gt; findByNameContaining(String keyword);
+
+  // WHERE age BETWEEN ? AND ?
+  List&lt;User&gt; findByAgeBetween(Integer min, Integer max);
+
+  // WHERE email = ? AND username = ?
+  Optional&lt;User&gt; findByEmailAndUsername(String email, String username);
+
+  // ORDER BY age DESC
+  List&lt;User&gt; findByOrderByAgeDesc();
+
+  // LIMIT 1
+  Optional&lt;User&gt; findFirstByOrderByAgeDesc();
+}</code></pre>
+
+  <p><strong>关键字</strong>：<code>findBy</code>、<code>countBy</code>、<code>deleteBy</code>、<code>existsBy</code>，配合 <code>And</code>、<code>Or</code>、<code>Like</code>、<code>Containing</code>、<code>Between</code>、<code>GreaterThan</code>、<code>OrderBy</code>...</p>
+
+  <h2>5. @Query 自定义查询</h2>
+  <p>复杂查询用 <code>@Query</code>：</p>
+  <pre><code class="language-java">public interface UserRepository extends JpaRepository&lt;User, Long&gt; {
+
+  @Query("SELECT u FROM User u WHERE u.email LIKE %:domain%")
+  List&lt;User&gt; findByEmailDomain(@Param("domain") String domain);
+
+  @Query("SELECT u FROM User u WHERE u.age &gt;= :minAge ORDER BY u.age ASC")
+  List&lt;User&gt; findAdults(@Param("minAge") int minAge);
+
+  // 原生 SQL
+  @Query(value = "SELECT * FROM users WHERE age &gt; ?1", nativeQuery = true)
+  List&lt;User&gt; findByAgeGreaterThanSql(int age);
+
+  // 更新
+  @Modifying
+  @Query("UPDATE User u SET u.email = :email WHERE u.id = :id")
+  int updateEmail(@Param("id") Long id, @Param("email") String email);
+}</code></pre>
+
+  <h2>6. 前端类比</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript (Sequelize / Prisma)</span>
+<pre><code>// Prisma
+const users = await prisma.user.findMany({
+  where: { age: { gt: 18 } },
+  orderBy: { age: 'desc' }
+});
+
+const user = await prisma.user.create({
+  data: { name, email }
+});</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java (Spring Data JPA)</span>
+<pre><code>List&lt;User&gt; users = userRepository
+    .findByAgeGreaterThanOrderByAgeDesc(18);
+
+User user = userRepository.save(new User(name, email));</code></pre>
+    </div>
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>spring-boot-webapp</code>，用 H2 Console 看自动建的表
+    <br><br>
+    <strong>练习 2：</strong> 在 <code>UserRepository</code> 加 <code>findByEmailContaining</code>，Controller 加搜索接口
+    <br><br>
+    <strong>练习 3：</strong> 用 <code>@Query</code> 写一个"邮箱模糊搜索 + 年龄过滤"的组合查询
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>JPA 和 MyBatis 的核心区别？你会选哪个？</li>
+      <li>方法名派生查询的"魔法"是如何实现的？</li>
+      <li><code>ddl-auto: create-drop</code> 在生产环境能开吗？为什么？</li>
+    </ol>
+  </div>
+
+  <p>JPA 入门后，进入 <a href="L17-mapping/lesson.html">L17 实体关系映射</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L15-validation/lesson.html">← L15</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L17-mapping/lesson.html">L17 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

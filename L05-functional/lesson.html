@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L05: 函数式编程 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L05 / 22</span></span>
+  <a href="L06-spring-boot-intro/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L05">
+  <h1><span class="course-tag">L05</span> 函数式编程</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Java 基础</span>
+    <span>🎯 现代 Java 写法</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 Lambda 表达式</li>
+      <li>理解函数式接口</li>
+      <li>会用方法引用 <code>::</code></li>
+      <li>熟悉 Stream 进阶操作</li>
+    </ul>
+  </div>
+
+  <h2>1. Lambda 表达式</h2>
+  <p>Lambda = <strong>匿名函数</strong>，让 Java 也能"函数式编程"。</p>
+
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>// 箭头函数
+const add = (a, b) => a + b;
+const greet = name => `Hello, ${name}`;
+const print = () => console.log("hi");</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// 完整语法：(参数) -> { 方法体 }
+BinaryOperator&lt;Integer&gt; add = (a, b) -> a + b;
+Consumer&lt;String&gt; greet = name -> System.out.println("Hello, " + name);
+Runnable print = () -> System.out.println("hi");
+
+// 单参数可省略括号
+Function&lt;String, Integer&gt; strLen = s -> s.length();
+
+// 单语句可省略 return
+Supplier&lt;String&gt; hello = () -> "hello";</code></pre>
+    </div>
+  </div>
+
+  <h2>2. 函数式接口</h2>
+  <p>函数式接口 = <strong>只有一个抽象方法</strong>的接口。Lambda 实际上就是这种接口的实例。</p>
+
+  <table>
+    <thead>
+      <tr><th>接口</th><th>抽象方法</th><th>用途</th><th>JS 对比</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Runnable</code></td><td><code>void run()</code></td><td>无参无返回</td><td><code>() => {}</code></td></tr>
+      <tr><td><code>Supplier&lt;T&gt;</code></td><td><code>T get()</code></td><td>无参有返回（生产）</td><td><code>() => x</code></td></tr>
+      <tr><td><code>Consumer&lt;T&gt;</code></td><td><code>void accept(T)</code></td><td>有参无返回（消费）</td><td><code>x => {}</code></td></tr>
+      <tr><td><code>Function&lt;T,R&gt;</code></td><td><code>R apply(T)</code></td><td>有参有返回（转换）</td><td><code>x => y</code></td></tr>
+      <tr><td><code>Predicate&lt;T&gt;</code></td><td><code>boolean test(T)</code></td><td>判断</td><td><code>x => bool</code></td></tr>
+      <tr><td><code>BiFunction&lt;T,U,R&gt;</code></td><td><code>R apply(T, U)</code></td><td>两参有返回</td><td><code>(a, b) => c</code></td></tr>
+    </tbody>
+  </table>
+
+  <h2>3. 方法引用 <code>::</code></h2>
+  <p>方法引用 = <strong>更简洁的 Lambda</strong>，当你只是"传入一个已存在的方法"。</p>
+  <pre><code class="language-java">// 静态方法引用
+Function&lt;String, Integer&gt; parser = Integer::parseInt;
+int n = parser.apply("123");  // 123
+
+// 实例方法引用
+String str = "hello";
+Supplier&lt;Integer&gt; len = str::length;
+
+// 构造方法引用
+Supplier&lt;ArrayList&lt;String&gt;&gt; listFactory = ArrayList::new;
+Function&lt;Integer, ArrayList&lt;String&gt;&gt; sizedList = ArrayList::new;
+
+// System.out::println 是经典用法
+list.forEach(System.out::println);  // 类似 list.forEach(console.log)</code></pre>
+
+  <h2>4. Stream 进阶</h2>
+  <pre><code class="language-java">List&lt;String&gt; names = Arrays.asList("Alice", "Bob", "Charlie", "David");
+
+// findFirst
+Optional&lt;String&gt; first = names.stream()
+    .filter(n -&gt; n.startsWith("C"))
+    .findFirst();
+first.ifPresent(System.out::println);  // Charlie
+
+// anyMatch / allMatch / noneMatch
+boolean hasAlice = names.stream().anyMatch(n -&gt; n.equals("Alice"));  // true
+boolean allLong  = names.stream().allMatch(n -&gt; n.length() &gt; 2);     // true
+
+// joining
+String joined = names.stream().collect(Collectors.joining(", "));
+// "Alice, Bob, Charlie, David"
+
+// groupingBy
+Map&lt;Integer, List&lt;String&gt;&gt; byLen = names.stream()
+    .collect(Collectors.groupingBy(String::length));
+// {3=[Bob], 5=[Alice, David], 7=[Charlie]}
+
+// mapToInt 求统计
+IntSummaryStatistics stats = names.stream()
+    .collect(Collectors.summarizingInt(String::length));
+// count=4, sum=19, min=3, avg=4.75, max=7</code></pre>
+
+  <h2>5. Optional - 优雅处理 null</h2>
+  <p>类似 JS 的 <code>obj?.prop</code> 可选链。</p>
+  <pre><code class="language-java">// JS
+const name = user?.profile?.name ?? "Anonymous";
+
+// Java 8+
+String name = Optional.ofNullable(user)
+    .map(User::getProfile)
+    .map(Profile::getName)
+    .orElse("Anonymous");</code></pre>
+
+  <div class="callout warn">
+    <div class="callout-title">避免在 Stream 里修改外部状态</div>
+    Stream 设计是"无副作用"的。在 lambda 里修改外部变量会引发并发问题，Java 直接禁了（需要 <code>final</code> 或等效 final）。
+  </div>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L05-functional</code> 看每个示例
+    <br><br>
+    <strong>练习 2：</strong> 用 Lambda 重构一个 for 循环，过滤 + 转换 + 收集
+    <br><br>
+    <strong>练习 3：</strong> 把 <code>System.out::println</code> 用普通 Lambda 写出来，看两者是否等价
+    <br><br>
+    <strong>练习 4：</strong> 写一个方法 <code>findFirstLongerThan(List&lt;String&gt; list, int len)</code>，返回 <code>Optional&lt;String&gt;</code>
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>Lambda 表达式和 JS 箭头函数在"this 绑定"上有什么不同？</li>
+      <li>为什么 Java 的 Lambda 只能用在"函数式接口"上？这是限制还是设计？</li>
+    </ol>
+  </div>
+
+  <p>Java 基础阶段完成！Java 部分你已经掌握了核心能力，进入 <a href="L06-spring-boot-intro/lesson.html">L06 Spring Boot 入门</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L04-collections/lesson.html">← L04</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L06-spring-boot-intro/lesson.html">L06 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

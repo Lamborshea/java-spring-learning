@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L04: 集合与泛型 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L04 / 22</span></span>
+  <a href="L05-functional/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L04">
+  <h1><span class="course-tag">L04</span> 集合与泛型</h1>
+  <div class="meta">
+    <span>⏱ 2 小时</span>
+    <span>📦 Java 基础</span>
+    <span>🎯 数据容器</span>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 <code>List</code> / <code>Set</code> / <code>Map</code> 三大集合</li>
+      <li>理解泛型 <code>&lt;T&gt;</code></li>
+      <li>会用 <code>Stream API</code> 做数据处理</li>
+    </ul>
+  </div>
+
+  <h2>1. 集合体系总览</h2>
+  <p>Java 集合的核心是 <code>Collection</code> 和 <code>Map</code> 两大接口：</p>
+  <pre><code>                Collection
+                /        \
+             List        Set
+            /    \        |
+    ArrayList  LinkedList  HashSet
+                             |
+                          TreeSet (有序)
+
+           Map (独立)
+            /     \
+        HashMap   TreeMap
+         |
+      LinkedHashMap (有序)</code></pre>
+
+  <h2>2. List：有序可重复</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>const arr = [1, 2, 3];
+arr.push(4);
+arr.pop();
+arr.includes(2);  // true
+arr.map(x => x * 2);
+arr.filter(x => x > 1);</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// ArrayList：底层数组，查询快，增删慢
+List<Integer> list = new ArrayList<>();
+list.add(1);
+list.add(2);
+list.add(3);
+list.remove(2);           // 按索引删除
+list.contains(2);         // 类似 includes
+list.get(0);              // 按索引访问
+
+// LinkedList：底层链表，增删快，查询慢
+List<Integer> linked = new LinkedList<>();</code></pre>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <div class="callout-title">选哪个？</div>
+    99% 场景用 <code>ArrayList</code>，除非频繁在中间增删才用 <code>LinkedList</code>。
+  </div>
+
+  <h2>3. Set：无序不可重复</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>const set = new Set([1, 2, 3, 2, 1]);
+console.log(set);  // Set { 1, 2, 3 }
+set.add(4);
+set.has(2);        // true</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>Set<Integer> set = new HashSet<>();
+set.add(1);
+set.add(2);
+set.add(2);        // 加不进去
+set.contains(2);   // true
+set.size();        // 2
+
+// 元素必须实现 hashCode() 和 equals()</code></pre>
+    </div>
+  </div>
+
+  <h2>4. Map：键值对</h2>
+  <div class="analogy">
+    <div class="js-side">
+      <span class="lang-tag">JavaScript</span>
+<pre><code>const obj = { name: "John", age: 25 };
+const map = new Map();
+map.set("name", "John");
+map.get("name");
+map.has("name");
+map.delete("age");
+Object.keys(obj);</code></pre>
+    </div>
+    <div class="java-side">
+      <span class="lang-tag">Java</span>
+<pre><code>// HashMap：最常用
+Map<String, Object> map = new HashMap<>();
+map.put("name", "John");
+map.put("age", 25);
+
+map.get("name");
+map.getOrDefault("x", 0);  // 不存在则返回默认值
+map.containsKey("name");
+map.remove("age");
+
+// 遍历
+map.forEach((k, v) -> System.out.println(k + "=" + v));</code></pre>
+    </div>
+  </div>
+
+  <h2>5. 泛型 &lt;T&gt;</h2>
+  <p>泛型 = <strong>类型参数化</strong>，让集合/类支持多种类型且保证类型安全。</p>
+  <pre><code class="language-java">// 不带泛型（Java 早期代码）
+List list = new ArrayList();
+list.add("hello");
+list.add(123);
+String s = (String) list.get(0);  // 要强转，运行时才报错
+
+// 带泛型（推荐）
+List&lt;String&gt; list = new ArrayList&lt;&gt;();
+list.add("hello");
+String s = list.get(0);  // 不需要强转，编译时就保证
+
+// 自定义泛型类
+public class Box&lt;T&gt; {
+  private T content;
+  public void set(T content) { this.content = content; }
+  public T get() { return content; }
+}
+
+Box&lt;String&gt; stringBox = new Box&lt;&gt;();
+stringBox.set("hi");
+String s = stringBox.get();</code></pre>
+
+  <h2>6. Stream API（重点）</h2>
+  <p>Stream 是 Java 8 引入的函数式数据处理流水线。<strong>类似 JS 数组方法链</strong>。</p>
+
+  <pre><code class="language-java">List&lt;Integer&gt; nums = Arrays.asList(1, 2, 3, 4, 5, 6);
+
+// 过滤偶数 → 乘以 2 → 求和
+int sum = nums.stream()
+    .filter(n -&gt; n % 2 == 0)        // 保留偶数
+    .map(n -&gt; n * 2)                // 翻倍
+    .reduce(0, Integer::sum);       // 求和
+// = (2*2 + 4*2 + 6*2) = 24
+
+// 收集为 List
+List&lt;Integer&gt; result = nums.stream()
+    .filter(n -&gt; n &gt; 3)
+    .collect(Collectors.toList());
+
+// 转 Map
+Map&lt;Integer, String&gt; map = nums.stream()
+    .collect(Collectors.toMap(
+        n -&gt; n,
+        n -&gt; "num=" + n
+    ));
+
+// 分组
+Map&lt;Boolean, List&lt;Integer&gt;&gt; groups = nums.stream()
+    .collect(Collectors.partitioningBy(n -&gt; n % 2 == 0));
+// {false=[1,3,5], true=[2,4,6]}</code></pre>
+
+  <table>
+    <thead>
+      <tr><th>Stream 操作</th><th>JS 对比</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>filter</code></td><td><code>arr.filter</code></td></tr>
+      <tr><td><code>map</code></td><td><code>arr.map</code></td></tr>
+      <tr><td><code>reduce</code></td><td><code>arr.reduce</code></td></tr>
+      <tr><td><code>sorted</code></td><td><code>arr.sort</code></td></tr>
+      <tr><td><code>collect(Collectors.toList())</code></td><td>链式末尾的数组</td></tr>
+    </tbody>
+  </table>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 运行 <code>L04-collections</code>，看每个示例输出
+    <br><br>
+    <strong>练习 2：</strong> 创建一个 <code>List&lt;String&gt;</code>，用 Stream 找出长度最长的字符串
+    <br><br>
+    <strong>练习 3：</strong> 用 <code>Collectors.groupingBy</code> 把一组学生按年级分组
+    <br><br>
+    <strong>练习 4：</strong> 写一个泛型方法 <code>&lt;T&gt; List&lt;T&gt; unique(List&lt;T&gt; list)</code>，返回去重后的列表
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么 <code>List&lt;String&gt;</code> 比不加泛型好？</li>
+      <li>Stream 和 for 循环比，性能和可读性各有什么优劣？</li>
+      <li>JS 的 <code>Set</code> 元素没有限制，Java 的 <code>HashSet</code> 元素为什么要实现 <code>hashCode()</code>？</li>
+    </ol>
+  </div>
+
+  <p>掌握集合后，进入 <a href="L05-functional/lesson.html">L05 函数式编程</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L03-oop/lesson.html">← L03</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L05-functional/lesson.html">L05 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L14: 全局异常处理 | Java Spring Boot 学习</title>
+<link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<nav class="topbar">
+  <a href="../INDEX.html">← 课程总览</a>
+  <span>课程 <span class="course-num">L14 / 22</span></span>
+  <a href="L15-validation/lesson.html">下一课 →</a>
+</nav>
+
+<main class="container" data-lesson-id="L14">
+  <h1><span class="course-tag">L14</span> 全局异常处理</h1>
+  <div class="meta">
+    <span>⏱ 1.5 小时</span>
+    <span>📦 Web 开发</span>
+    <span>🎯 @ControllerAdvice</span>
+  </div>
+
+  <div class="callout info">
+    <div class="callout-title">没有全局异常会怎样？</div>
+    <p>没处理的异常，Spring 会返回：</p>
+    <ul>
+      <li>500 状态码</li>
+      <li>默认 HTML 错误页（或堆栈）</li>
+      <li>前端无法解析</li>
+      <li><strong>安全风险</strong>：可能暴露内部信息</li>
+    </ul>
+  </div>
+
+  <div class="objective">
+    <h3>本节目标</h3>
+    <ul>
+      <li>掌握 <code>@ControllerAdvice</code> + <code>@ExceptionHandler</code></li>
+      <li>自定义业务异常</li>
+      <li>统一错误响应格式</li>
+    </ul>
+  </div>
+
+  <h2>1. <code>@ControllerAdvice</code> 全局拦截</h2>
+  <pre><code class="language-java">@RestControllerAdvice  // = @ControllerAdvice + @ResponseBody
+public class GlobalExceptionHandler {
+
+  private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  // 业务异常
+  @ExceptionHandler(BusinessException.class)
+  public ApiResponse&lt;Void&gt; handleBusiness(BusinessException e) {
+    log.warn("业务异常: {}", e.getMessage());
+    return ApiResponse.error(e.getCode(), e.getMessage());
+  }
+
+  // 参数校验异常
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ApiResponse&lt;Map&lt;String, String&gt;&gt; handleValidation(
+      MethodArgumentNotValidException e
+  ) {
+    Map&lt;String, String&gt; errors = new HashMap&lt;&gt;();
+    e.getBindingResult().getFieldErrors().forEach(fe -&gt;
+      errors.put(fe.getField(), fe.getDefaultMessage())
+    );
+    return ApiResponse.error(400, "参数校验失败").data(errors);
+  }
+
+  // 资源不存在
+  @ExceptionHandler(EntityNotFoundException.class)
+  public ApiResponse&lt;Void&gt; handleNotFound(EntityNotFoundException e) {
+    return ApiResponse.error(404, e.getMessage());
+  }
+
+  // 兜底：所有未处理异常
+  @ExceptionHandler(Exception.class)
+  public ApiResponse&lt;Void&gt; handleAll(Exception e) {
+    log.error("系统异常", e);  // 打印堆栈
+    return ApiResponse.error(500, "服务器异常");
+  }
+}</code></pre>
+
+  <h2>2. 自定义业务异常</h2>
+  <pre><code class="language-java">public class BusinessException extends RuntimeException {
+  private final int code;
+
+  public BusinessException(int code, String message) {
+    super(message);
+    this.code = code;
+  }
+
+  public BusinessException(ErrorCode errorCode) {
+    super(errorCode.message);
+    this.code = errorCode.code;
+  }
+
+  public int getCode() { return code; }
+}
+
+// 使用
+if (userRepository.existsByEmail(req.email())) {
+  throw new BusinessException(409, "邮箱已存在");
+}</code></pre>
+
+  <h2>3. 异常处理顺序</h2>
+  <p>Spring 会找<strong>最匹配</strong>的 <code>@ExceptionHandler</code>。子类型优先：</p>
+  <pre><code class="language-java">// 具体异常
+@ExceptionHandler(IllegalArgumentException.class)
+public ApiResponse&lt;?&gt; handleIAE(IllegalArgumentException e) { ... }
+
+// 兜底
+@ExceptionHandler(Exception.class)
+public ApiResponse&lt;?&gt; handleAll(Exception e) { ... }</code></pre>
+
+  <p>抛 <code>IllegalArgumentException</code> 时，会匹配第一个（更具体）。</p>
+
+  <h2>4. 处理 404 资源找不到</h2>
+  <pre><code class="language-java">// Spring Boot 3.x: 实现 ErrorController
+@RestController
+public class NotFoundController implements ErrorController {
+
+  @RequestMapping("/error")
+  public ApiResponse&lt;Void&gt; handleError(HttpServletRequest request) {
+    Integer status = (Integer) request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
+    if (status == 404) {
+      return ApiResponse.error(404, "接口不存在");
+    }
+    return ApiResponse.error(status != null ? status : 500, "未知错误");
+  }
+}</code></pre>
+
+  <h2>5. 实战技巧</h2>
+  <div class="callout tip">
+    <div class="callout-title">生产建议</div>
+    <ul>
+      <li>业务异常继承 <code>RuntimeException</code>（不强制 try-catch）</li>
+      <li>兜底 <code>Exception</code> 处理要<strong>记录完整堆栈</strong>，但对用户只返回友好消息</li>
+      <li>不要把数据库错误、堆栈信息直接返回给前端</li>
+      <li>异常处理可以按业务模块拆分多个 <code>@RestControllerAdvice</code></li>
+    </ul>
+  </div>
+
+  <h2>6. 完整流程</h2>
+  <pre><code class="language-text">请求 -&gt; Controller
+            ↓ (抛异常)
+        Spring 框架
+            ↓ (查找 @ExceptionHandler)
+   GlobalExceptionHandler
+            ↓
+        ApiResponse&lt;?&gt;
+            ↓
+        前端收到统一格式</code></pre>
+
+  <div class="exercise">
+    <strong>练习 1：</strong> 跑 <code>spring-boot-webapp</code>，访问一个不存在的接口，看返回格式
+    <br><br>
+    <strong>练习 2：</strong> 定义 <code>BusinessException</code> 和错误码枚举
+    <br><br>
+    <strong>练习 3：</strong> 在 <code>UserController</code> 添加一个"用户不存在"业务异常
+    <br><br>
+    <strong>练习 4：</strong> 测试：访问不存在的 user id，确认返回 404 + 友好消息
+  </div>
+
+  <div class="thinking">
+    <ol>
+      <li>为什么业务异常要继承 <code>RuntimeException</code> 而不是 <code>Exception</code>？</li>
+      <li>兜底 <code>Exception</code> 处理应该返回详细信息还是友好消息？</li>
+      <li>如何在异常处理里区分"前端错误"（4xx）和"后端错误"（5xx）？</li>
+    </ol>
+  </div>
+
+  <p>异常处理掌握后，进入 <a href="L15-validation/lesson.html">L15 参数校验</a>。</p>
+</main>
+
+<nav class="nav-bottom">
+  <a href="L13-response/lesson.html">← L13</a>
+  <a href="../INDEX.html">课程总览</a>
+  <a href="L15-validation/lesson.html">L15 →</a>
+</nav>
+
+<script src="../assets/lesson.js"></script>
+</body>
+</html>
